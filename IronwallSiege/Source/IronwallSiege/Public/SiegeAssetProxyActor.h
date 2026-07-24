@@ -62,6 +62,7 @@ public:
     void AdvanceCombatTime(float DeltaSeconds);
     void StartAttackCooldown(float Duration);
     void TriggerActionPulse();
+    FVector GetTrebuchetReleaseLocation() const;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Siege|Combat")
     ESiegeFaction Faction = ESiegeFaction::Neutral;
@@ -94,6 +95,9 @@ private:
     UPROPERTY(VisibleAnywhere)
     TObjectPtr<UStaticMeshComponent> TrebuchetCounterweight;
 
+    UPROPERTY(VisibleAnywhere)
+    TObjectPtr<UStaticMeshComponent> TrebuchetStone;
+
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInstanceDynamic> FactionMarkerMaterial;
 
@@ -102,6 +106,9 @@ private:
 
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInstanceDynamic> TrebuchetCounterweightMaterial;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UMaterialInstanceDynamic> TrebuchetStoneMaterial;
 
     bool bCombatEnabled = false;
     bool bDefeated = false;

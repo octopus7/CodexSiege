@@ -7,6 +7,7 @@
 
 class ASiegeAssetProxyActor;
 class UMaterialInstanceDynamic;
+class USceneComponent;
 class UStaticMeshComponent;
 
 UCLASS()
@@ -30,10 +31,16 @@ public:
 
 private:
     UPROPERTY(VisibleAnywhere)
+    TObjectPtr<USceneComponent> Root;
+
+    UPROPERTY(VisibleAnywhere)
     TObjectPtr<UStaticMeshComponent> ProjectileMesh;
 
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInstanceDynamic> ProjectileMaterial;
+
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<UStaticMeshComponent>> ImpactFragments;
 
     TWeakObjectPtr<ASiegeAssetProxyActor> Target;
     TWeakObjectPtr<AActor> DamageSource;
@@ -43,6 +50,11 @@ private:
     float FlightDuration = 2.2f;
     float ElapsedTime = 0.0f;
     float ArcHeight = 1350.0f;
+    float ShatterElapsedTime = 0.0f;
     ESiegeFaction Faction = ESiegeFaction::Neutral;
+    TArray<FVector> FragmentVelocities;
     bool bLaunched = false;
+    bool bShattering = false;
+
+    void BeginShatter();
 };

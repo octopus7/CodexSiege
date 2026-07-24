@@ -165,6 +165,7 @@ namespace SiegeGeometry
 namespace SiegeTrebuchetMotion
 {
     constexpr float Duration = 1.45f;
+    constexpr float StoneReleaseTime = 0.18f;
     constexpr float LoadedPitch = -34.0f;
     constexpr float ReleasePitch = 62.0f;
     constexpr float SettledPitch = 48.0f;
@@ -220,12 +221,24 @@ ASiegeAssetProxyActor::ASiegeAssetProxyActor()
     TrebuchetCounterweight->SetRelativeScale3D(FVector(1.5f, 1.8f, 1.9f));
     TrebuchetCounterweight->SetVisibility(false);
 
+    TrebuchetStone = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TrebuchetStone"));
+    TrebuchetStone->SetupAttachment(TrebuchetArmPivot);
+    TrebuchetStone->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    TrebuchetStone->SetCastShadow(true);
+    TrebuchetStone->SetRelativeLocation(FVector(520.0f, 0.0f, 0.0f));
+    TrebuchetStone->SetRelativeScale3D(FVector(0.34f));
+    TrebuchetStone->SetVisibility(false);
+
     static ConstructorHelpers::FObjectFinder<UStaticMesh> RigCubeMesh(
         TEXT("/Engine/BasicShapes/Cube.Cube"));
     if (RigCubeMesh.Succeeded())
     {
         TrebuchetArm->SetStaticMesh(RigCubeMesh.Object);
         TrebuchetCounterweight->SetStaticMesh(RigCubeMesh.Object);
+    }
+    if (MarkerMesh.Succeeded())
+    {
+        TrebuchetStone->SetStaticMesh(MarkerMesh.Object);
     }
 }
 
@@ -404,6 +417,16 @@ void ASiegeAssetProxyActor::TriggerActionPulse()
     }
 }
 
+FVector ASiegeAssetProxyActor::GetTrebuchetReleaseLocation() const
+{
+    if (TrebuchetStone)
+    {
+        return TrebuchetStone->GetComponentLocation();
+    }
+
+    return GetActorTransform().TransformPosition(FVector(520.0f, 0.0f, 570.0f));
+}
+
 void ASiegeAssetProxyActor::RefreshFactionMarker()
 {
     if (!FactionMarker)
@@ -460,7 +483,7 @@ void ASiegeAssetProxyActor::RefreshFactionMarker()
 
 void ASiegeAssetProxyActor::RefreshTrebuchetRig()
 {
-    if (!TrebuchetArm || !TrebuchetCounterweight)
+    if (!TrebuchetArm || !TrebuchetCounterweight || !TrebuchetStone)
     {
         return;
     }
@@ -468,6 +491,7 @@ void ASiegeAssetProxyActor::RefreshTrebuchetRig()
     const bool bShowRig = AssetSlot == ESiegeAssetSlot::Trebuchet && !bDefeated;
     TrebuchetArm->SetVisibility(bShowRig);
     TrebuchetCounterweight->SetVisibility(bShowRig);
+    TrebuchetStone->SetVisibility(bShowRig && TrebuchetMotionTime < SiegeTrebuchetMotion::StoneReleaseTime);
     if (!bShowRig)
     {
         return;
@@ -485,6 +509,11 @@ void ASiegeAssetProxyActor::RefreshTrebuchetRig()
     {
         TrebuchetCounterweightMaterial = UMaterialInstanceDynamic::Create(BaseMaterial, this);
         TrebuchetCounterweight->SetMaterial(0, TrebuchetCounterweightMaterial);
+    }
+    if (BaseMaterial && !TrebuchetStoneMaterial)
+    {
+        TrebuchetStoneMaterial = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+        TrebuchetStone->SetMaterial(0, TrebuchetStoneMaterial);
     }
 
     FLinearColor WoodColor(0.15f, 0.065f, 0.018f);
@@ -508,6 +537,12 @@ void ASiegeAssetProxyActor::RefreshTrebuchetRig()
         TrebuchetCounterweightMaterial->SetVectorParameterValue(
             TEXT("Color"),
             FLinearColor(0.075f, 0.08f, 0.085f));
+    }
+    if (TrebuchetStoneMaterial)
+    {
+        TrebuchetStoneMaterial->SetVectorParameterValue(
+            TEXT("Color"),
+            FLinearColor(0.12f, 0.105f, 0.085f));
     }
 
     UpdateTrebuchetMotion(TrebuchetMotionTime);
@@ -557,6 +592,10 @@ void ASiegeAssetProxyActor::UpdateTrebuchetMotion(const float MotionTime)
 
     // The weight travels with the short end of the arm but stays vertically aligned.
     TrebuchetCounterweight->SetRelativeRotation(FRotator(-Pitch, 0.0f, 0.0f));
+    TrebuchetStone->SetVisibility(
+        !bDefeated &&
+        AssetSlot == ESiegeAssetSlot::Trebuchet &&
+        (MotionTime <= 0.0f || MotionTime < SiegeTrebuchetMotion::StoneReleaseTime));
 }
 
 void ASiegeAssetProxyActor::HandleDefeat(AActor* DamageSource)

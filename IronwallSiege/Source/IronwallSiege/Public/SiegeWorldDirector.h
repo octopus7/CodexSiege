@@ -75,6 +75,7 @@ private:
     float BattleElapsedTime = 0.0f;
     float OutcomeCheckTime = 0.0f;
     float NextTelemetryTime = 5.0f;
+    float TrebuchetReleaseCountdown = -1.0f;
     bool bBattleStarted = false;
     bool bBattleResolved = false;
 };

@@ -1,5 +1,6 @@
 #include "SiegeProjectileActor.h"
 
+#include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -12,11 +13,14 @@ ASiegeProjectileActor::ASiegeProjectileActor()
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = false;
 
+    Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+    SetRootComponent(Root);
+
     ProjectileMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ProjectileMesh"));
-    SetRootComponent(ProjectileMesh);
+    ProjectileMesh->SetupAttachment(Root);
     ProjectileMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     ProjectileMesh->SetCastShadow(true);
-    ProjectileMesh->SetRelativeScale3D(FVector(0.18f));
+    ProjectileMesh->SetRelativeScale3D(FVector(0.34f));
 
     static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(
         TEXT("/Engine/BasicShapes/Sphere.Sphere"));
@@ -58,6 +62,8 @@ void ASiegeProjectileActor::Launch(
     FlightDuration = FMath::Max(0.25f, NewFlightDuration);
     ElapsedTime = 0.0f;
     bLaunched = true;
+    bShattering = false;
+    ProjectileMesh->SetVisibility(true);
     SetActorLocation(StartLocation);
     SetActorTickEnabled(true);
 
@@ -74,6 +80,37 @@ void ASiegeProjectileActor::Launch(
 void ASiegeProjectileActor::Tick(const float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
+
+    if (bShattering)
+    {
+        ShatterElapsedTime += DeltaSeconds;
+        const float ShatterAlpha = FMath::Clamp(ShatterElapsedTime / 0.72f, 0.0f, 1.0f);
+        for (int32 Index = 0; Index < ImpactFragments.Num(); ++Index)
+        {
+            UStaticMeshComponent* Fragment = ImpactFragments[Index];
+            if (!Fragment || !FragmentVelocities.IsValidIndex(Index))
+            {
+                continue;
+            }
+
+            FragmentVelocities[Index].Z -= 1450.0f * DeltaSeconds;
+            Fragment->AddRelativeLocation(FragmentVelocities[Index] * DeltaSeconds);
+            Fragment->AddLocalRotation(FRotator(
+                410.0f * DeltaSeconds,
+                (190.0f + static_cast<float>(Index) * 37.0f) * DeltaSeconds,
+                275.0f * DeltaSeconds));
+
+            const float BaseScale = 0.075f + 0.018f * static_cast<float>(Index % 3);
+            Fragment->SetRelativeScale3D(FVector(BaseScale * (1.0f - ShatterAlpha)));
+        }
+
+        if (ShatterAlpha >= 1.0f)
+        {
+            Destroy();
+        }
+        return;
+    }
+
     if (!bLaunched)
     {
         return;
@@ -91,6 +128,41 @@ void ASiegeProjectileActor::Tick(const float DeltaSeconds)
         {
             ImpactTarget->ApplyCombatDamage(Damage, DamageSource.Get());
         }
-        Destroy();
+        BeginShatter();
     }
+}
+
+void ASiegeProjectileActor::BeginShatter()
+{
+    bLaunched = false;
+    bShattering = true;
+    ShatterElapsedTime = 0.0f;
+    ProjectileMesh->SetVisibility(false);
+
+    UStaticMesh* RockMesh = ProjectileMesh->GetStaticMesh();
+    for (int32 Index = 0; Index < 8; ++Index)
+    {
+        UStaticMeshComponent* Fragment = NewObject<UStaticMeshComponent>(this);
+        Fragment->SetupAttachment(Root);
+        Fragment->SetStaticMesh(RockMesh);
+        Fragment->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Fragment->SetCastShadow(true);
+        Fragment->SetRelativeLocation(FVector::ZeroVector);
+        Fragment->SetRelativeScale3D(FVector(0.09f));
+        if (ProjectileMaterial)
+        {
+            Fragment->SetMaterial(0, ProjectileMaterial);
+        }
+        Fragment->RegisterComponent();
+        ImpactFragments.Add(Fragment);
+
+        const float Angle = UE_TWO_PI * static_cast<float>(Index) / 8.0f;
+        const float HorizontalSpeed = 165.0f + 28.0f * static_cast<float>(Index % 4);
+        FragmentVelocities.Add(FVector(
+            FMath::Cos(Angle) * HorizontalSpeed,
+            FMath::Sin(Angle) * HorizontalSpeed,
+            220.0f + 42.0f * static_cast<float>(Index % 3)));
+    }
+
+    UE_LOG(LogTemp, Display, TEXT("IronwallSiegeCombat projectile_shattered"));
 }

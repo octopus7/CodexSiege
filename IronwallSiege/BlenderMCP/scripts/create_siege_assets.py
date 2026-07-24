@@ -249,8 +249,8 @@ def build_trebuchet(materials: dict[str, bpy.types.Material]) -> None:
     for y in (-1.25, 1.25):
         beam(f"{name}_Frame_L_{y}", (-2.4, y, 0.55), (0.0, y, 5.8), 0.28, materials["wood"], root)
         beam(f"{name}_Frame_R_{y}", (2.4, y, 0.55), (0.0, y, 5.8), 0.28, materials["wood"], root)
-    beam(f"{name}_ThrowingArm", (-4.8, 0.0, 5.6), (5.4, 0.0, 8.0), 0.3, materials["wood_dark"], root)
-    cube(f"{name}_Counterweight", (1.4, 1.6, 1.5), (-3.1, 0.0, 5.0), materials["iron"], root)
+    # The throwing arm, counterweight, and stone are separate runtime
+    # components in Unreal so they can animate and launch independently.
     for x in (-2.5, 2.5):
         for y in (-1.55, 1.55):
             cylinder(

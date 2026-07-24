@@ -23,6 +23,7 @@ namespace SiegeBattle
     constexpr float AttackerRankSpacing = 175.0f;
     constexpr float DefenderFileSpacing = 145.0f;
     constexpr float DefenderRankSpacing = 120.0f;
+    constexpr float TrebuchetReleaseDelay = 0.18f;
 }
 
 ASiegeWorldDirector::ASiegeWorldDirector()
@@ -68,6 +69,7 @@ void ASiegeWorldDirector::StartBattle()
     BattleElapsedTime = 0.0f;
     OutcomeCheckTime = 0.0f;
     NextTelemetryTime = 5.0f;
+    TrebuchetReleaseCountdown = -1.0f;
     SetActorTickEnabled(true);
 
     if (Trebuchet.IsValid())
@@ -167,13 +169,26 @@ void ASiegeWorldDirector::SpawnForces()
         ESiegeAssetSlot::Trebuchet,
         ESiegeFaction::Attackers,
         FVector(-1180.0f, -1940.0f, 0.0f),
-        FRotator(0.0f, 8.0f, 0.0f),
+        FRotator(0.0f, 90.0f, 0.0f),
         FVector(1.25f),
         650.0f,
         0.0f,
         185.0f,
         5000.0f,
         TEXT("Attacker_Trebuchet"));
+
+    if (Trebuchet.IsValid() && Gate.IsValid())
+    {
+        FVector FacingDirection = Gate->GetActorLocation() - Trebuchet->GetActorLocation();
+        FacingDirection.Z = 0.0f;
+        if (!FacingDirection.IsNearlyZero())
+        {
+            Trebuchet->SetActorRotation(FRotator(
+                0.0f,
+                FacingDirection.Rotation().Yaw,
+                0.0f));
+        }
+    }
 
     BatteringRam = SpawnCombatant(
         ESiegeAssetSlot::BatteringRam,
@@ -567,13 +582,25 @@ void ASiegeWorldDirector::TickSiegeEngines(const float DeltaSeconds)
         if (Engine->IsCombatAlive())
         {
             Engine->AdvanceCombatTime(DeltaSeconds);
+
+            if (TrebuchetReleaseCountdown >= 0.0f)
+            {
+                TrebuchetReleaseCountdown -= DeltaSeconds;
+                if (TrebuchetReleaseCountdown <= 0.0f)
+                {
+                    LaunchTrebuchetProjectile();
+                    TrebuchetReleaseCountdown = -1.0f;
+                }
+            }
+
             if (Gate.IsValid() &&
                 Gate->IsCombatAlive() &&
-                Engine->GetAttackCooldownRemaining() <= 0.0f)
+                Engine->GetAttackCooldownRemaining() <= 0.0f &&
+                TrebuchetReleaseCountdown < 0.0f)
             {
-                LaunchTrebuchetProjectile();
                 Engine->StartAttackCooldown(4.4f);
                 Engine->TriggerActionPulse();
+                TrebuchetReleaseCountdown = SiegeBattle::TrebuchetReleaseDelay;
             }
         }
     }
@@ -588,7 +615,7 @@ void ASiegeWorldDirector::LaunchTrebuchetProjectile()
         return;
     }
 
-    const FVector Start = Engine->GetActorLocation() + FVector(230.0f, 0.0f, 760.0f);
+    const FVector Start = Engine->GetTrebuchetReleaseLocation();
     const FVector End = TargetGate->GetActorLocation() + FVector(
         FMath::FRandRange(-120.0f, 120.0f),
         -30.0f,
@@ -610,7 +637,10 @@ void ASiegeWorldDirector::LaunchTrebuchetProjectile()
         UE_LOG(
             LogTemp,
             Display,
-            TEXT("IronwallSiegeCombat trebuchet_fired target=Gate"));
+            TEXT("IronwallSiegeCombat trebuchet_fired target=Gate facing_alignment=%.2f"),
+            FVector::DotProduct(
+                Engine->GetActorForwardVector().GetSafeNormal2D(),
+                (TargetGate->GetActorLocation() - Engine->GetActorLocation()).GetSafeNormal2D()));
     }
 }
 
