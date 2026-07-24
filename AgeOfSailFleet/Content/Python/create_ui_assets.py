@@ -220,7 +220,21 @@ def _glyph_slot(tree, base_name, texture_path, width, height):
     _set(glow_transform, "scale", unreal.Vector2D(1.08, 1.08))
     _set(glow, "render_transform", glow_transform)
     _call(glow, "set_desired_size_override", unreal.Vector2D(width, height))
-    overlay.add_child_to_overlay(glow)
+    glow_slot = overlay.add_child_to_overlay(glow)
+    horizontal_fill = _enum(
+        unreal.HorizontalAlignment,
+        "H_ALIGN_FILL",
+        "FILL",
+    )
+    vertical_fill = _enum(
+        unreal.VerticalAlignment,
+        "V_ALIGN_FILL",
+        "FILL",
+    )
+    if horizontal_fill is not None:
+        _set(glow_slot, "horizontal_alignment", horizontal_fill)
+    if vertical_fill is not None:
+        _set(glow_slot, "vertical_alignment", vertical_fill)
     main = _image(
         tree,
         "{}Image".format(base_name),
@@ -228,7 +242,11 @@ def _glyph_slot(tree, base_name, texture_path, width, height):
         unreal.LinearColor(1.0, 1.0, 1.0, 1.0),
     )
     _call(main, "set_desired_size_override", unreal.Vector2D(width, height))
-    overlay.add_child_to_overlay(main)
+    main_slot = overlay.add_child_to_overlay(main)
+    if horizontal_fill is not None:
+        _set(main_slot, "horizontal_alignment", horizontal_fill)
+    if vertical_fill is not None:
+        _set(main_slot, "vertical_alignment", vertical_fill)
     return size
 
 
@@ -436,22 +454,23 @@ def _build_blueprint():
     status_panel = _border(
         tree,
         "DateWindPanel",
-        unreal.LinearColor(0.0, 0.0, 0.0, 0.0),
-        _margin(12, 8, 12, 8),
+        unreal.LinearColor(0.008, 0.014, 0.018, 0.38),
+        _margin(18, 10, 18, 10),
     )
     status_slot = root.add_child_to_canvas(status_panel)
     _configure_canvas_slot(
         status_slot,
         _anchors(1.0, 0.0, 1.0, 0.0),
         unreal.Vector2D(1.0, 0.0),
-        _margin(-24, 24, 590, 112),
-        z_order=2,
+        _margin(-28, 28, 610, 120),
+        z_order=20,
     )
 
-    status_content = _construct(tree, unreal.VerticalBox, "DateWindContent")
+    # Use an authored canvas for deterministic glyph geometry. Horizontal/vertical
+    # box desired-size negotiation can collapse texture-only children to zero in a
+    # cooked viewport even though they remain visible in the Widget Designer.
+    status_content = _construct(tree, unreal.CanvasPanel, "DateWindCanvas")
     _add(status_panel, status_content)
-    date_row = _construct(tree, unreal.HorizontalBox, "DateGlyphRow")
-    status_content.add_child_to_vertical_box(date_row)
     date_specs = (
         (
             "DateWeekday",
@@ -479,22 +498,35 @@ def _build_blueprint():
         ("DateYearTens", "/Game/UI/DateGlyphs/T_Date_Digit_1", 28, 34),
         ("DateYearOnes", "/Game/UI/DateGlyphs/T_Date_Digit_5", 28, 34),
     )
+    date_x = 0.0
     for base_name, texture_path, width, height in date_specs:
         glyph = _glyph_slot(tree, base_name, texture_path, width, height)
-        glyph_slot = date_row.add_child_to_horizontal_box(glyph)
-        _set_padding(glyph_slot, _margin(3, 0, 3, 0))
+        glyph_slot = status_content.add_child_to_canvas(glyph)
+        _configure_canvas_slot(
+            glyph_slot,
+            _anchors(0.0, 0.0, 0.0, 0.0),
+            unreal.Vector2D(0.0, 0.0),
+            _margin(date_x, 0, width, height),
+            z_order=2,
+        )
+        date_x += width + 6.0
 
-    wind_row = _construct(tree, unreal.HorizontalBox, "WindGlyphRow")
-    wind_row_slot = status_content.add_child_to_vertical_box(wind_row)
-    _set_padding(wind_row_slot, _margin(90, 9, 0, 0))
     wind_specs = (
         ("WindCompass", "/Game/UI/DateGlyphs/T_Wind_Compass", 42, 42),
         ("WindArrow", "/Game/UI/DateGlyphs/T_Wind_Arrow", 42, 42),
     )
+    wind_x = 202.0
     for base_name, texture_path, width, height in wind_specs:
         glyph = _glyph_slot(tree, base_name, texture_path, width, height)
-        glyph_slot = wind_row.add_child_to_horizontal_box(glyph)
-        _set_padding(glyph_slot, _margin(4, 0, 4, 0))
+        glyph_slot = status_content.add_child_to_canvas(glyph)
+        _configure_canvas_slot(
+            glyph_slot,
+            _anchors(0.0, 0.0, 0.0, 0.0),
+            unreal.Vector2D(0.0, 0.0),
+            _margin(wind_x, 48, width, height),
+            z_order=2,
+        )
+        wind_x += width + 8.0
 
     required = ["ShipCardRow"]
     for card_number in range(1, MAX_CARDS + 1):

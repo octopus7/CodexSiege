@@ -98,6 +98,9 @@ protected:
     UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
     TObjectPtr<UHorizontalBox> ShipCardRow;
 
+    UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+    TObjectPtr<UBorder> DateWindPanel;
+
 private:
     struct FBoundShipCard
     {

@@ -96,6 +96,12 @@ void USailFleetHUDWidget::ClearSelection()
 void USailFleetHUDWidget::SetBattleHUDVisible(bool bVisible)
 {
     SetVisibility(bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+    if (DateWindPanel)
+    {
+        DateWindPanel->SetVisibility(
+            bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+        DateWindPanel->SetRenderOpacity(bVisible ? 1.0f : 0.0f);
+    }
 }
 
 void USailFleetHUDWidget::SetDateGlyphTextures(
@@ -144,6 +150,7 @@ void USailFleetHUDWidget::SetWindHeadingDegrees(const float HeadingDegrees)
             (*GlowImage)->SetRenderTransformAngle(HeadingDegrees + 90.0f);
         }
     }
+
 }
 
 void USailFleetHUDWidget::BindExistingCardWidgets()
@@ -198,12 +205,25 @@ void USailFleetHUDWidget::BindExistingGlyphWidgets()
 
     for (const FName SlotName : SlotNames)
     {
-        BoundGlyphImages.Add(
-            SlotName,
-            Cast<UImage>(GetWidgetFromName(FName(*(SlotName.ToString() + TEXT("Image"))))));
+        UImage* MainImage = Cast<UImage>(
+            GetWidgetFromName(FName(*(SlotName.ToString() + TEXT("Image")))));
+        UImage* GlowImage = Cast<UImage>(
+            GetWidgetFromName(FName(*(SlotName.ToString() + TEXT("Glow")))));
+        BoundGlyphImages.Add(SlotName, MainImage);
         BoundGlyphImages.Add(
             FName(*(SlotName.ToString() + TEXT("Glow"))),
-            Cast<UImage>(GetWidgetFromName(FName(*(SlotName.ToString() + TEXT("Glow"))))));
+            GlowImage);
+
+        if (MainImage)
+        {
+            MainImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+            MainImage->SetRenderOpacity(1.0f);
+        }
+        if (GlowImage)
+        {
+            GlowImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+            GlowImage->SetRenderOpacity(1.0f);
+        }
     }
 }
 
@@ -211,6 +231,11 @@ void USailFleetHUDWidget::ApplyGlyphTexture(FName SlotName, UTexture2D* Texture)
 {
     if (!Texture)
     {
+        UE_LOG(
+            LogTemp,
+            Warning,
+            TEXT("Fleet HUD glyph texture missing for slot %s"),
+            *SlotName.ToString());
         return;
     }
 
@@ -220,6 +245,8 @@ void USailFleetHUDWidget::ApplyGlyphTexture(FName SlotName, UTexture2D* Texture)
         {
             (*MainImage)->SetBrushFromTexture(Texture, true);
             (*MainImage)->SetColorAndOpacity(FLinearColor::White);
+            (*MainImage)->SetVisibility(ESlateVisibility::HitTestInvisible);
+            (*MainImage)->SetRenderOpacity(1.0f);
         }
     }
 
@@ -230,6 +257,8 @@ void USailFleetHUDWidget::ApplyGlyphTexture(FName SlotName, UTexture2D* Texture)
         {
             (*GlowImage)->SetBrushFromTexture(Texture, true);
             (*GlowImage)->SetColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.86f));
+            (*GlowImage)->SetVisibility(ESlateVisibility::HitTestInvisible);
+            (*GlowImage)->SetRenderOpacity(1.0f);
         }
     }
 }
