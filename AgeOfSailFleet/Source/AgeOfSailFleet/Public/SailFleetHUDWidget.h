@@ -113,9 +113,17 @@ private:
     struct FBoundShipCard
     {
         UBorder* Container = nullptr;
-        UImage* FactionGlow = nullptr;
-        UImage* LocketFrame = nullptr;
+        UBorder* FactionGlow = nullptr;
+        UBorder* AccentTop = nullptr;
+        UBorder* AccentLeft = nullptr;
+        UBorder* AccentRight = nullptr;
+        UBorder* AccentBottom = nullptr;
+        UBorder* AccentDivider = nullptr;
         UImage* Portrait = nullptr;
+        UTextBlock* CornerTopLeft = nullptr;
+        UTextBlock* CornerTopRight = nullptr;
+        UTextBlock* CornerBottomLeft = nullptr;
+        UTextBlock* CornerBottomRight = nullptr;
         UTextBlock* CaptainName = nullptr;
         UTextBlock* ShipName = nullptr;
         UTextBlock* ShipClass = nullptr;
@@ -130,15 +138,6 @@ private:
 
     UPROPERTY(Transient)
     TArray<FSailShipHUDEntry> CurrentShips;
-
-    UPROPERTY(Transient)
-    TObjectPtr<UTexture2D> BronzeLocketTexture;
-
-    UPROPERTY(Transient)
-    TObjectPtr<UTexture2D> SilverLocketTexture;
-
-    UPROPERTY(Transient)
-    TObjectPtr<UTexture2D> GoldLocketTexture;
 
     void BindExistingCardWidgets();
     void BindExistingGlyphWidgets();

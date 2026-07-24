@@ -18,22 +18,15 @@ namespace SailFleetHUD
 
 bool USailFleetHUDWidget::FBoundShipCard::IsComplete() const
 {
-    return Container && FactionGlow && LocketFrame && Portrait && CaptainName
-        && ShipName && ShipClass && RankText && HealthBar;
+    return Container && FactionGlow && AccentTop && AccentLeft && AccentRight
+        && AccentBottom && AccentDivider && Portrait && CornerTopLeft
+        && CornerTopRight && CornerBottomLeft && CornerBottomRight
+        && CaptainName && ShipName && ShipClass && RankText && HealthBar;
 }
 
 void USailFleetHUDWidget::NativeOnInitialized()
 {
     Super::NativeOnInitialized();
-    BronzeLocketTexture = LoadObject<UTexture2D>(
-        nullptr,
-        TEXT("/Game/UI/Lockets/T_Locket_Bronze.T_Locket_Bronze"));
-    SilverLocketTexture = LoadObject<UTexture2D>(
-        nullptr,
-        TEXT("/Game/UI/Lockets/T_Locket_Silver.T_Locket_Silver"));
-    GoldLocketTexture = LoadObject<UTexture2D>(
-        nullptr,
-        TEXT("/Game/UI/Lockets/T_Locket_Gold.T_Locket_Gold"));
     BindExistingCardWidgets();
     BindExistingGlyphWidgets();
     RefreshPresentation();
@@ -241,9 +234,17 @@ void USailFleetHUDWidget::BindExistingCardWidgets()
         };
         FBoundShipCard Card;
         Card.Container = Cast<UBorder>(GetWidgetFromName(WidgetName(TEXT("CardContainer"))));
-        Card.FactionGlow = Cast<UImage>(GetWidgetFromName(WidgetName(TEXT("FactionGlow"))));
-        Card.LocketFrame = Cast<UImage>(GetWidgetFromName(WidgetName(TEXT("LocketFrame"))));
+        Card.FactionGlow = Cast<UBorder>(GetWidgetFromName(WidgetName(TEXT("FactionWash"))));
+        Card.AccentTop = Cast<UBorder>(GetWidgetFromName(WidgetName(TEXT("AccentTop"))));
+        Card.AccentLeft = Cast<UBorder>(GetWidgetFromName(WidgetName(TEXT("AccentLeft"))));
+        Card.AccentRight = Cast<UBorder>(GetWidgetFromName(WidgetName(TEXT("AccentRight"))));
+        Card.AccentBottom = Cast<UBorder>(GetWidgetFromName(WidgetName(TEXT("AccentBottom"))));
+        Card.AccentDivider = Cast<UBorder>(GetWidgetFromName(WidgetName(TEXT("AccentDivider"))));
         Card.Portrait = Cast<UImage>(GetWidgetFromName(WidgetName(TEXT("Portrait"))));
+        Card.CornerTopLeft = Cast<UTextBlock>(GetWidgetFromName(WidgetName(TEXT("CornerTopLeft"))));
+        Card.CornerTopRight = Cast<UTextBlock>(GetWidgetFromName(WidgetName(TEXT("CornerTopRight"))));
+        Card.CornerBottomLeft = Cast<UTextBlock>(GetWidgetFromName(WidgetName(TEXT("CornerBottomLeft"))));
+        Card.CornerBottomRight = Cast<UTextBlock>(GetWidgetFromName(WidgetName(TEXT("CornerBottomRight"))));
         Card.CaptainName = Cast<UTextBlock>(GetWidgetFromName(WidgetName(TEXT("CaptainName"))));
         Card.ShipName = Cast<UTextBlock>(GetWidgetFromName(WidgetName(TEXT("ShipName"))));
         Card.ShipClass = Cast<UTextBlock>(GetWidgetFromName(WidgetName(TEXT("ShipClass"))));
@@ -362,27 +363,33 @@ void USailFleetHUDWidget::ApplyShipToCard(const FSailShipHUDEntry& Ship, FBoundS
     const bool bBlueFleet = Ship.Faction == ESailFleetFaction::BlueFleet;
 
     const int32 Rank = FMath::Clamp(Ship.ShipRank, 1, 3);
-    UTexture2D* LocketTexture =
-        Rank == 3 ? GoldLocketTexture.Get() :
-        Rank == 2 ? SilverLocketTexture.Get() :
-                    BronzeLocketTexture.Get();
-    if (LocketTexture)
-    {
-        Card.FactionGlow->SetBrushFromTexture(LocketTexture, true);
-        Card.LocketFrame->SetBrushFromTexture(LocketTexture, true);
-    }
-    const FVector2D LocketRenderSize(166.0f, 170.0f);
-    Card.FactionGlow->SetDesiredSizeOverride(LocketRenderSize);
-    Card.LocketFrame->SetDesiredSizeOverride(LocketRenderSize);
-    Card.Portrait->SetDesiredSizeOverride(LocketRenderSize);
-    Card.Portrait->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
-    Card.Portrait->SetRenderScale(FVector2D(1.10f, 1.10f));
-    const FLinearColor FactionGlowColor =
+    const FLinearColor AccentColor =
+        Rank == 3 ? FLinearColor(1.0f, 0.48f, 0.025f, 1.0f) :
+        Rank == 2 ? FLinearColor(0.08f, 0.58f, 1.0f, 1.0f) :
+                    FLinearColor(1.0f, 0.23f, 0.025f, 1.0f);
+    const FLinearColor MutedAccent(
+        AccentColor.R * 0.62f,
+        AccentColor.G * 0.62f,
+        AccentColor.B * 0.62f,
+        0.82f);
+    const FLinearColor FactionColor =
         bBlueFleet
-            ? FLinearColor(0.025f, 0.20f, 1.0f, 0.68f)
-            : FLinearColor(1.0f, 0.025f, 0.012f, 0.68f);
-    Card.FactionGlow->SetColorAndOpacity(FactionGlowColor);
-    Card.LocketFrame->SetColorAndOpacity(FLinearColor::White);
+            ? FLinearColor(0.025f, 0.28f, 1.0f, 0.82f)
+            : FLinearColor(1.0f, 0.035f, 0.012f, 0.82f);
+    Card.FactionGlow->SetBrushColor(FactionColor);
+    Card.AccentTop->SetBrushColor(AccentColor);
+    Card.AccentLeft->SetBrushColor(MutedAccent);
+    Card.AccentRight->SetBrushColor(MutedAccent);
+    Card.AccentBottom->SetBrushColor(AccentColor);
+    Card.AccentDivider->SetBrushColor(FLinearColor(
+        AccentColor.R,
+        AccentColor.G,
+        AccentColor.B,
+        0.72f));
+    Card.CornerTopLeft->SetColorAndOpacity(FSlateColor(AccentColor));
+    Card.CornerTopRight->SetColorAndOpacity(FSlateColor(AccentColor));
+    Card.CornerBottomLeft->SetColorAndOpacity(FSlateColor(MutedAccent));
+    Card.CornerBottomRight->SetColorAndOpacity(FSlateColor(MutedAccent));
     Card.CaptainName->SetText(Ship.CaptainName);
     Card.ShipName->SetText(Ship.ShipName);
     // Keep both authored slots in the layout so the card retains its original
@@ -393,6 +400,9 @@ void USailFleetHUDWidget::ApplyShipToCard(const FSailShipHUDEntry& Ship, FBoundS
     if (Ship.CaptainPortrait)
     {
         Card.Portrait->SetBrushFromTexture(Ship.CaptainPortrait, true);
+        Card.Portrait->SetDesiredSizeOverride(FVector2D(166.0f, 154.0f));
+        Card.Portrait->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+        Card.Portrait->SetRenderScale(FVector2D(1.0f, 1.0f));
         Card.Portrait->SetColorAndOpacity(FLinearColor::White);
     }
     else

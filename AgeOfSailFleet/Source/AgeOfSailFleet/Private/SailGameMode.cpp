@@ -150,18 +150,18 @@ void ASailGameMode::RefreshFleetHUD()
         Entry.HealthFraction = Ship->GetHealthRatio();
         const TCHAR* PortraitPath =
             Ship->GetCaptainName().Contains(TEXT("Ward"))
-                ? TEXT("/Game/UI/Captains/T_Captain_Blue_Admiral_Ward_Oval.T_Captain_Blue_Admiral_Ward_Oval")
+                ? TEXT("/Game/UI/Captains/T_Captain_Blue_Admiral_Ward.T_Captain_Blue_Admiral_Ward")
                 : Ship->GetCaptainName().Contains(TEXT("Mercer"))
-                    ? TEXT("/Game/UI/Captains/T_Captain_Blue_Captain_Mercer_Oval.T_Captain_Blue_Captain_Mercer_Oval")
+                    ? TEXT("/Game/UI/Captains/T_Captain_Blue_Captain_Mercer.T_Captain_Blue_Captain_Mercer")
                     : Ship->GetCaptainName().Contains(TEXT("Reed"))
-                        ? TEXT("/Game/UI/Captains/T_Captain_Blue_Captain_Reed_Oval.T_Captain_Blue_Captain_Reed_Oval")
+                        ? TEXT("/Game/UI/Captains/T_Captain_Blue_Captain_Reed.T_Captain_Blue_Captain_Reed")
                         : Ship->GetCaptainName().Contains(TEXT("Voss"))
-                            ? TEXT("/Game/UI/Captains/T_Captain_Red_Admiral_Voss_Oval.T_Captain_Red_Admiral_Voss_Oval")
+                            ? TEXT("/Game/UI/Captains/T_Captain_Red_Admiral_Voss.T_Captain_Red_Admiral_Voss")
                             : Ship->GetCaptainName().Contains(TEXT("Marat"))
-                                ? TEXT("/Game/UI/Captains/T_Captain_Red_Captain_Marat_Oval.T_Captain_Red_Captain_Marat_Oval")
+                                ? TEXT("/Game/UI/Captains/T_Captain_Red_Captain_Marat.T_Captain_Red_Captain_Marat")
                                 : Ship->GetCaptainName().Contains(TEXT("Vale"))
-                                    ? TEXT("/Game/UI/Captains/T_Captain_Red_Captain_Vale_Oval.T_Captain_Red_Captain_Vale_Oval")
-                                    : TEXT("/Game/UI/Captains/T_Captain_Red_Captain_Cruz_Oval.T_Captain_Red_Captain_Cruz_Oval");
+                                    ? TEXT("/Game/UI/Captains/T_Captain_Red_Captain_Vale.T_Captain_Red_Captain_Vale")
+                                    : TEXT("/Game/UI/Captains/T_Captain_Red_Captain_Cruz.T_Captain_Red_Captain_Cruz");
         Entry.CaptainPortrait = LoadObject<UTexture2D>(nullptr, PortraitPath);
         if (!Entry.CaptainPortrait)
         {

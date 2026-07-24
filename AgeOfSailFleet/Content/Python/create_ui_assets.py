@@ -121,6 +121,7 @@ def _load_ui_font():
 
 
 UI_FONT = _load_ui_font()
+MODERN_UI_FONT = unreal.EditorAssetLibrary.load_asset("/Engine/EngineFonts/Roboto")
 
 
 def _font(size, outline=1):
@@ -129,6 +130,20 @@ def _font(size, outline=1):
     if UI_FONT:
         _set(info, "font_object", UI_FONT)
         _set(info, "typeface_font_name", "Regular")
+    outline_settings = unreal.FontOutlineSettings()
+    _set(outline_settings, "outline_size", int(outline))
+    _set(outline_settings, "outline_color", INK)
+    _set(outline_settings, "separate_fill_alpha", True)
+    _set(info, "outline_settings", outline_settings)
+    return info
+
+
+def _modern_font(size, outline=0, typeface="Regular"):
+    info = unreal.SlateFontInfo()
+    _set(info, "size", int(size))
+    if MODERN_UI_FONT:
+        _set(info, "font_object", MODERN_UI_FONT)
+        _set(info, "typeface_font_name", typeface)
     outline_settings = unreal.FontOutlineSettings()
     _set(outline_settings, "outline_size", int(outline))
     _set(outline_settings, "outline_color", INK)
@@ -259,6 +274,18 @@ def _size(tree, name, width=None, height=None):
     return widget
 
 
+def _place(canvas, child, left, top, width, height, z_order=0):
+    slot = canvas.add_child_to_canvas(child)
+    _configure_canvas_slot(
+        slot,
+        _anchors(0.0, 0.0, 0.0, 0.0),
+        unreal.Vector2D(0.0, 0.0),
+        _margin(left, top, width, height),
+        z_order=z_order,
+    )
+    return slot
+
+
 def _fill_vertical_slot(slot, padding=None):
     if padding:
         _set_padding(slot, padding)
@@ -271,87 +298,129 @@ def _build_card(tree, card_number):
     suffix = "{:02d}".format(card_number)
     size_box = _size(tree, "CardSize{}".format(suffix), 178.0, 226.0)
 
-    # CardContainer is only the native visibility root. Its brush is fully
-    # transparent: there is deliberately no rectangular card or panel.
+    # The card is intentionally rectangular and dark. The portrait remains the
+    # focus while the opaque lower third keeps both labels inside the same box.
     container = _border(
         tree,
         "CardContainer{}".format(suffix),
-        unreal.LinearColor(0.0, 0.0, 0.0, 0.0),
+        unreal.LinearColor(0.008, 0.010, 0.012, 0.80),
     )
     _add(size_box, container)
 
-    content = _construct(tree, unreal.VerticalBox, "CardContent{}".format(suffix))
-    _add(container, content)
+    canvas = _construct(tree, unreal.CanvasPanel, "CardCanvas{}".format(suffix))
+    _add(container, canvas)
 
-    portrait_size = _size(tree, "PortraitSize{}".format(suffix), 166.0, 170.0)
-    portrait_slot = content.add_child_to_vertical_box(portrait_size)
-    _set_padding(portrait_slot, _margin(6, 0, 6, 0))
-    center = _enum(unreal.HorizontalAlignment, "H_ALIGN_CENTER", "CENTER")
-    if center is not None:
-        _set(portrait_slot, "horizontal_alignment", center)
+    # Quiet neutral hairlines hold the box together. Bright accents cover only
+    # short sections so the card reads as premium rather than neon.
+    neutral_line = unreal.LinearColor(0.30, 0.32, 0.32, 0.58)
+    for edge_name, left, top, width, height in (
+        ("FrameTop", 1, 1, 176, 1),
+        ("FrameBottom", 1, 224, 176, 1),
+        ("FrameLeft", 1, 1, 1, 224),
+        ("FrameRight", 176, 1, 1, 224),
+    ):
+        edge = _border(
+            tree,
+            "{}{}" .format(edge_name, suffix),
+            neutral_line,
+        )
+        _place(canvas, edge, left, top, width, height, 1)
 
-    portrait_overlay = _construct(tree, unreal.Overlay, "PortraitOverlay{}".format(suffix))
-    _add(portrait_size, portrait_overlay)
-
-    # The glow uses the same alpha silhouette as the chosen rank locket, so
-    # faction color never creates a rectangular backing plate.
-    faction_glow = _image(
+    # Faction is a narrow saturated wash; rank drives the gold/cobalt/copper
+    # accents in native code.
+    faction_glow = _border(
         tree,
-        "FactionGlow{}".format(suffix),
-        "/Game/UI/Lockets/T_Locket_Gold",
+        "FactionWash{}".format(suffix),
         BLUE if card_number % 2 else RED,
     )
-    glow_transform = unreal.WidgetTransform()
-    _set(glow_transform, "scale", unreal.Vector2D(1.045, 1.045))
-    _set(glow_transform, "translation", unreal.Vector2D(-3.7, -3.7))
-    _set(faction_glow, "render_transform", glow_transform)
-    _call(faction_glow, "set_render_opacity", 0.58)
-    portrait_overlay.add_child_to_overlay(faction_glow)
+    _place(canvas, faction_glow, 2, 20, 3, 184, 2)
 
     portrait = _image(
         tree,
         "Portrait{}".format(suffix),
-        "/Game/UI/Captains/T_Captain_Blue_Admiral_Ward_Oval",
+        "/Game/UI/Captains/T_Captain_Blue_Admiral_Ward",
         unreal.LinearColor(1.0, 1.0, 1.0, 1.0),
     )
-    # The authored oval mask is slightly smaller than the locket's inner rim.
-    # Overscan it beneath the frame so no transparent seam can show around the
-    # portrait; the frame is added afterward and therefore remains on top.
-    portrait_transform = unreal.WidgetTransform()
-    _set(portrait_transform, "scale", unreal.Vector2D(1.10, 1.10))
-    _set(portrait, "render_transform", portrait_transform)
-    _set(portrait, "render_transform_pivot", unreal.Vector2D(0.5, 0.5))
-    portrait_overlay.add_child_to_overlay(portrait)
+    _call(portrait, "set_desired_size_override", unreal.Vector2D(166.0, 154.0))
+    _place(canvas, portrait, 6, 6, 166, 154, 2)
 
-    locket_frame = _image(
+    # Stepped translucent bands approximate a strong black gradient without a
+    # dedicated material, keeping the generated WBP fully self-contained.
+    gradient_alphas = (0.04, 0.08, 0.14, 0.22, 0.34, 0.48, 0.64, 0.78)
+    for band_index, alpha in enumerate(gradient_alphas):
+        band = _border(
+            tree,
+            "PortraitShade{:02d}{}".format(band_index + 1, suffix),
+            unreal.LinearColor(0.0, 0.0, 0.0, alpha),
+        )
+        _place(canvas, band, 6, 96 + band_index * 8, 166, 8, 3)
+
+    text_zone = _border(
         tree,
-        "LocketFrame{}".format(suffix),
-        "/Game/UI/Lockets/T_Locket_Gold",
-        unreal.LinearColor(1.0, 1.0, 1.0, 1.0),
+        "TextZone{}".format(suffix),
+        unreal.LinearColor(0.006, 0.008, 0.010, 0.94),
     )
-    portrait_overlay.add_child_to_overlay(locket_frame)
+    _place(canvas, text_zone, 4, 154, 170, 68, 4)
+
+    accent_specs = (
+        ("AccentTop", 22, 1, 62, 2),
+        ("AccentLeft", 1, 22, 2, 58),
+        ("AccentRight", 175, 22, 2, 58),
+        ("AccentBottom", 94, 223, 62, 2),
+        ("AccentDivider", 12, 159, 154, 1),
+    )
+    for name, left, top, width, height in accent_specs:
+        accent = _border(
+            tree,
+            "{}{}".format(name, suffix),
+            GOLD,
+        )
+        _place(canvas, accent, left, top, width, height, 6)
+
+    # A compact old-printer fleuron replaces the modern right-angle HUD brackets.
+    # Mirroring the same glyph gives each corner a Georgian chart-cartouche feel
+    # without returning to the oversized baroque locket silhouette.
+    for name, left, top, scale_x, scale_y in (
+        ("CornerTopLeft", 4, 2, 1.0, 1.0),
+        ("CornerTopRight", 154, 2, -1.0, 1.0),
+        ("CornerBottomLeft", 4, 200, 1.0, -1.0),
+        ("CornerBottomRight", 154, 200, -1.0, -1.0),
+    ):
+        ornament = _text(
+            tree,
+            "{}{}".format(name, suffix),
+            "❦",
+            13,
+            GOLD,
+            0,
+        )
+        transform = unreal.WidgetTransform()
+        _set(transform, "scale", unreal.Vector2D(scale_x, scale_y))
+        _set(ornament, "render_transform", transform)
+        _set(ornament, "render_transform_pivot", unreal.Vector2D(0.5, 0.5))
+        _place(canvas, ornament, left, top, 20, 20, 7)
 
     captain_name = _text(
         tree,
         "CaptainName{}".format(suffix),
-        "CAPT. E. HARCOURT",
+        "Admiral Elias Ward",
         12,
-        unreal.LinearColor(0.95, 0.83, 0.55, 1.0),
-        1,
+        unreal.LinearColor(0.96, 0.95, 0.91, 1.0),
+        0,
     )
-    captain_slot = content.add_child_to_vertical_box(captain_name)
-    _set_padding(captain_slot, _margin(1, -3, 1, 0))
+    _set(captain_name, "font", _modern_font(12, 0, "Bold"))
+    _place(canvas, captain_name, 8, 166, 162, 22, 7)
 
     ship_name = _text(
         tree,
         "ShipName{}".format(suffix),
-        "HMS RESOLUTE",
-        10,
-        unreal.LinearColor(0.76, 0.71, 0.60, 1.0),
-        1,
+        "HMS Sovereign Wind",
+        9,
+        unreal.LinearColor(0.72, 0.73, 0.72, 0.96),
+        0,
     )
-    ship_slot = content.add_child_to_vertical_box(ship_name)
-    _set_padding(ship_slot, _margin(2, 0, 2, 0))
+    _set(ship_name, "font", _modern_font(9, 0, "Regular"))
+    _place(canvas, ship_name, 8, 191, 162, 17, 7)
 
     ship_class = _text(
         tree,
@@ -361,8 +430,7 @@ def _build_card(tree, card_number):
         unreal.LinearColor(0.63, 0.56, 0.42, 1.0),
         1,
     )
-    ship_class_slot = content.add_child_to_vertical_box(ship_class)
-    _set_padding(ship_class_slot, _margin(2, 0, 2, 0))
+    _place(canvas, ship_class, 8, 204, 162, 14, 5)
     # Hidden (rather than Collapsed) deliberately keeps the original vertical
     # allocation below the ship name while omitting this detail line.
     hidden = _enum(unreal.SlateVisibility, "HIDDEN")
@@ -377,16 +445,14 @@ def _build_card(tree, card_number):
         GOLD,
         1,
     )
-    rank_slot = content.add_child_to_vertical_box(rank_text)
-    _set_padding(rank_slot, _margin(2, 0, 2, 0))
+    _place(canvas, rank_text, 8, 204, 162, 14, 5)
     if hidden is not None:
         _call(rank_text, "set_visibility", hidden)
 
     health = _construct(tree, unreal.ProgressBar, "HealthBar{}".format(suffix))
     _call(health, "set_percent", 0.78)
     _call(health, "set_fill_color_and_opacity", unreal.LinearColor(0.12, 0.46, 0.23, 1.0))
-    health_slot = content.add_child_to_vertical_box(health)
-    _set_padding(health_slot, _margin(24, 1, 24, 0))
+    _place(canvas, health, 18, 218, 142, 2, 6)
 
     return size_box
 
@@ -551,9 +617,17 @@ def _build_blueprint():
             "{}{}".format(prefix, suffix)
             for prefix in (
                 "CardContainer",
-                "FactionGlow",
-                "LocketFrame",
+                "FactionWash",
+                "AccentTop",
+                "AccentLeft",
+                "AccentRight",
+                "AccentBottom",
+                "AccentDivider",
                 "Portrait",
+                "CornerTopLeft",
+                "CornerTopRight",
+                "CornerBottomLeft",
+                "CornerBottomRight",
                 "CaptainName",
                 "ShipName",
                 "ShipClass",
