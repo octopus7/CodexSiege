@@ -76,10 +76,7 @@ void USailTitleScreenWidget::ResetTitleTransition()
     SetVisibility(ESlateVisibility::Visible);
     SetDepartureEnabled(true);
 
-    if (TitlePanel)
-    {
-        TitlePanel->SetRenderOpacity(1.0f);
-    }
+    SetTitleVisualOpacity(1.0f);
     if (FullscreenBlackOverlay)
     {
         FullscreenBlackOverlay->SetRenderOpacity(0.0f);
@@ -137,6 +134,36 @@ void USailTitleScreenWidget::SynchronizeGraphicModeChecks()
     }
 }
 
+void USailTitleScreenWidget::SetTitleVisualOpacity(const float Opacity)
+{
+    const float ClampedOpacity = FMath::Clamp(Opacity, 0.0f, 1.0f);
+    const ESlateVisibility ContentVisibility =
+        ClampedOpacity <= UE_KINDA_SMALL_NUMBER
+            ? ESlateVisibility::Collapsed
+            : ESlateVisibility::Visible;
+
+    if (TitlePanel)
+    {
+        TitlePanel->SetRenderOpacity(ClampedOpacity);
+        TitlePanel->SetVisibility(ContentVisibility);
+    }
+
+    // Rounded-box checkbox brushes can retain their last Slate draw element
+    // for a frame when only an ancestor's render opacity changes. Drive their
+    // opacity explicitly and collapse them at zero so no radio-ring ghost is
+    // left over during the subsequent black-screen transition.
+    if (GraphicMode3DCheckBox)
+    {
+        GraphicMode3DCheckBox->SetRenderOpacity(ClampedOpacity);
+        GraphicMode3DCheckBox->SetVisibility(ContentVisibility);
+    }
+    if (GraphicMode2DCheckBox)
+    {
+        GraphicMode2DCheckBox->SetRenderOpacity(ClampedOpacity);
+        GraphicMode2DCheckBox->SetVisibility(ContentVisibility);
+    }
+}
+
 void USailTitleScreenWidget::HandleDepartureClicked()
 {
     if (TransitionState != EDepartureTransition::Idle)
@@ -165,10 +192,7 @@ void USailTitleScreenWidget::NativeTick(const FGeometry& MyGeometry, float InDel
     {
         const float Alpha = FMath::Clamp(
             TransitionTime / SailTitleTransition::TitleFadeDuration, 0.0f, 1.0f);
-        if (TitlePanel)
-        {
-            TitlePanel->SetRenderOpacity(1.0f - Alpha);
-        }
+        SetTitleVisualOpacity(1.0f - Alpha);
         if (Alpha >= 1.0f)
         {
             TransitionState = EDepartureTransition::FadeToBlack;

@@ -77,6 +77,7 @@ private:
 
     void SetSelectedGraphicsMode(ESailGraphicsMode GraphicsMode);
     void SynchronizeGraphicModeChecks();
+    void SetTitleVisualOpacity(float Opacity);
 
     EDepartureTransition TransitionState = EDepartureTransition::Idle;
     ESailGraphicsMode SelectedGraphicsMode = ESailGraphicsMode::ThreeDimensional;
