@@ -36,13 +36,12 @@ namespace
     }
 }
 
-void USiegeTitleWidget::NativeConstruct()
+void USiegeTitleWidget::NativeOnInitialized()
 {
-    Super::NativeConstruct();
+    Super::NativeOnInitialized();
 
     if (WidgetTree->RootWidget)
     {
-        ShowTitle();
         return;
     }
 
@@ -131,7 +130,11 @@ void USiegeTitleWidget::NativeConstruct()
     UButton* BackButton = AddMenuButton(OptionsMenu, TEXT("BACK"));
     BackButton->OnClicked.AddDynamic(this, &USiegeTitleWidget::HandleBackClicked);
     OptionsMenu->SetVisibility(ESlateVisibility::Collapsed);
+}
 
+void USiegeTitleWidget::NativeConstruct()
+{
+    Super::NativeConstruct();
     ShowTitle();
 }
 
@@ -199,7 +202,6 @@ void USiegeTitleWidget::SetGameplayInput(const bool bGameplay)
         else
         {
             FInputModeUIOnly InputMode;
-            InputMode.SetWidgetToFocus(TakeWidget());
             InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
             Controller->SetInputMode(InputMode);
         }

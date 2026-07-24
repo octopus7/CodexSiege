@@ -15,6 +15,7 @@ class IRONWALLSIEGE_API USiegeTitleWidget : public UUserWidget
     GENERATED_BODY()
 
 public:
+    virtual void NativeOnInitialized() override;
     virtual void NativeConstruct() override;
     void ShowTitle();
     bool IsTitleVisible() const;
