@@ -1,7 +1,5 @@
 #include "SiegeWorldDirector.h"
 
-#include "Components/DirectionalLightComponent.h"
-#include "Engine/DirectionalLight.h"
 #include "EngineUtils.h"
 #include "SiegeAssetProxyActor.h"
 #include "SiegeGameInstance.h"
@@ -19,25 +17,6 @@ void ASiegeWorldDirector::BeginPlay()
     {
         GameInstance->OnResourceSetChanged.AddDynamic(this, &ASiegeWorldDirector::HandleResourceSetChanged);
     }
-
-    if (ADirectionalLight* Sun = GetWorld()->SpawnActor<ADirectionalLight>(
-        FVector(0, 0, 2200),
-        FRotator(-42, -28, 0)))
-    {
-        Sun->GetLightComponent()->SetIntensity(6.0f);
-        Sun->GetLightComponent()->SetLightColor(FLinearColor(1.0f, 0.72f, 0.52f));
-    }
-
-    SpawnAsset(ESiegeAssetSlot::Ground, FVector::ZeroVector, FRotator::ZeroRotator, FVector::OneVector, TEXT("SiegeField"));
-
-    const float FortressY = 1250.0f;
-    SpawnAsset(ESiegeAssetSlot::Gate, FVector(0, FortressY, 0), FRotator::ZeroRotator, FVector::OneVector, TEXT("Gatehouse"));
-    SpawnAsset(ESiegeAssetSlot::Wall, FVector(-640, FortressY, 0), FRotator::ZeroRotator, FVector(1.05f, 1.0f, 1.0f), TEXT("Wall_L1"));
-    SpawnAsset(ESiegeAssetSlot::Wall, FVector(-1280, FortressY, 0), FRotator::ZeroRotator, FVector(1.05f, 1.0f, 1.0f), TEXT("Wall_L2"));
-    SpawnAsset(ESiegeAssetSlot::Wall, FVector(640, FortressY, 0), FRotator::ZeroRotator, FVector(1.05f, 1.0f, 1.0f), TEXT("Wall_R1"));
-    SpawnAsset(ESiegeAssetSlot::Wall, FVector(1280, FortressY, 0), FRotator::ZeroRotator, FVector(1.05f, 1.0f, 1.0f), TEXT("Wall_R2"));
-    SpawnAsset(ESiegeAssetSlot::Tower, FVector(-1740, FortressY, 0), FRotator::ZeroRotator, FVector::OneVector, TEXT("Tower_L"));
-    SpawnAsset(ESiegeAssetSlot::Tower, FVector(1740, FortressY, 0), FRotator::ZeroRotator, FVector::OneVector, TEXT("Tower_R"));
 
     SpawnAsset(ESiegeAssetSlot::Trebuchet, FVector(-800, -1500, 0), FRotator(0, 8, 0), FVector(1.25f), TEXT("Trebuchet_A"));
     SpawnAsset(ESiegeAssetSlot::BatteringRam, FVector(620, -1000, 0), FRotator::ZeroRotator, FVector(1.15f), TEXT("BatteringRam_A"));

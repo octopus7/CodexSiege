@@ -3,7 +3,6 @@
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/SceneComponent.h"
-#include "Kismet/KismetMathLibrary.h"
 
 ASiegeCameraPawn::ASiegeCameraPawn()
 {
@@ -16,13 +15,6 @@ ASiegeCameraPawn::ASiegeCameraPawn()
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(Root);
     Camera->FieldOfView = 65.0f;
-}
-
-void ASiegeCameraPawn::BeginPlay()
-{
-    Super::BeginPlay();
-    SetActorLocation(FVector(0, -4700, 1850));
-    SetActorRotation(UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), FVector(0, 650, 280)));
 }
 
 void ASiegeCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

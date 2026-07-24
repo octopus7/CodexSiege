@@ -14,7 +14,6 @@ class IRONWALLSIEGE_API ASiegeCameraPawn : public APawn
 
 public:
     ASiegeCameraPawn();
-    virtual void BeginPlay() override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
 private:
