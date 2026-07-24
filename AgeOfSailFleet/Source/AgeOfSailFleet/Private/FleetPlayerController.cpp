@@ -1,6 +1,7 @@
 #include "FleetPlayerController.h"
 
 #include "EngineUtils.h"
+#include "FleetCameraPawn.h"
 #include "InputCoreTypes.h"
 #include "SailShip.h"
 
@@ -15,6 +16,14 @@ AFleetPlayerController::AFleetPlayerController()
 void AFleetPlayerController::BeginPlay()
 {
     Super::BeginPlay();
+    ApplyStrategyInputMode();
+}
+
+void AFleetPlayerController::ApplyStrategyInputMode()
+{
+    bShowMouseCursor = true;
+    bEnableClickEvents = true;
+    bEnableMouseOverEvents = true;
     FInputModeGameAndUI InputMode;
     InputMode.SetHideCursorDuringCapture(false);
     InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -37,6 +46,7 @@ void AFleetPlayerController::SetupInputComponent()
     InputComponent->BindAction(TEXT("Select"), IE_Released, this, &AFleetPlayerController::EndSelection);
     InputComponent->BindAction(TEXT("ContextCommand"), IE_Pressed, this, &AFleetPlayerController::IssueContextCommand);
     InputComponent->BindAction(TEXT("SelectAll"), IE_Pressed, this, &AFleetPlayerController::SelectAllFriendlyShips);
+    InputComponent->BindAction(TEXT("ToggleFreeFlight"), IE_Pressed, this, &AFleetPlayerController::ToggleFreeFlightMode);
 }
 
 void AFleetPlayerController::ClearSelection()
@@ -53,6 +63,10 @@ void AFleetPlayerController::ClearSelection()
 
 void AFleetPlayerController::SelectAllFriendlyShips()
 {
+    if (IsFreeFlightActive())
+    {
+        return;
+    }
     ClearSelection();
     for (TActorIterator<ASailShip> It(GetWorld()); It; ++It)
     {
@@ -67,12 +81,21 @@ void AFleetPlayerController::SelectAllFriendlyShips()
 
 void AFleetPlayerController::BeginSelection()
 {
+    if (IsFreeFlightActive())
+    {
+        return;
+    }
     bDragSelecting = GetMousePosition(DragStart.X, DragStart.Y);
     DragCurrent = DragStart;
 }
 
 void AFleetPlayerController::EndSelection()
 {
+    if (IsFreeFlightActive())
+    {
+        bDragSelecting = false;
+        return;
+    }
     if (!bDragSelecting)
     {
         return;
@@ -104,6 +127,10 @@ void AFleetPlayerController::EndSelection()
 
 void AFleetPlayerController::IssueContextCommand()
 {
+    if (IsFreeFlightActive())
+    {
+        return;
+    }
     SelectedShips.RemoveAll([](const TWeakObjectPtr<ASailShip>& ShipPtr)
     {
         return !ShipPtr.IsValid() || !ShipPtr->IsAfloat();
@@ -160,6 +187,36 @@ void AFleetPlayerController::IssueContextCommand()
             0.0f);
         Ship->SetMoveCommand(CommandPoint + FormationOffset);
     }
+}
+
+void AFleetPlayerController::ToggleFreeFlightMode()
+{
+    AFleetCameraPawn* CameraPawn = Cast<AFleetCameraPawn>(GetPawn());
+    if (!CameraPawn)
+    {
+        return;
+    }
+
+    CameraPawn->ToggleFreeFlight();
+    bDragSelecting = false;
+    if (CameraPawn->IsFreeFlightEnabled())
+    {
+        bShowMouseCursor = false;
+        bEnableClickEvents = false;
+        bEnableMouseOverEvents = false;
+        FInputModeGameOnly InputMode;
+        SetInputMode(InputMode);
+    }
+    else
+    {
+        ApplyStrategyInputMode();
+    }
+}
+
+bool AFleetPlayerController::IsFreeFlightActive() const
+{
+    const AFleetCameraPawn* CameraPawn = Cast<AFleetCameraPawn>(GetPawn());
+    return CameraPawn && CameraPawn->IsFreeFlightEnabled();
 }
 
 void AFleetPlayerController::SelectShip(ASailShip* Ship, const bool bAdditive)

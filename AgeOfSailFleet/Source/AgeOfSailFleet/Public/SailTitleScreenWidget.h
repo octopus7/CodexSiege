@@ -7,8 +7,7 @@
 
 class UButton;
 class UBorder;
-class UComboBoxString;
-class UTextBlock;
+class UCheckBox;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFleetDepartureRequested);
 
@@ -52,10 +51,10 @@ protected:
     TObjectPtr<UBorder> FullscreenBlackOverlay;
 
     UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
-    TObjectPtr<UComboBoxString> GraphicModeComboBox;
+    TObjectPtr<UCheckBox> GraphicMode3DCheckBox;
 
     UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
-    TObjectPtr<UTextBlock> GraphicModeValueText;
+    TObjectPtr<UCheckBox> GraphicMode2DCheckBox;
 
 private:
     enum class EDepartureTransition : uint8
@@ -71,10 +70,17 @@ private:
     void HandleDepartureClicked();
 
     UFUNCTION()
-    void HandleGraphicModeChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
+    void Handle3DModeCheckChanged(bool bIsChecked);
+
+    UFUNCTION()
+    void Handle2DModeCheckChanged(bool bIsChecked);
+
+    void SetSelectedGraphicsMode(ESailGraphicsMode GraphicsMode);
+    void SynchronizeGraphicModeChecks();
 
     EDepartureTransition TransitionState = EDepartureTransition::Idle;
     ESailGraphicsMode SelectedGraphicsMode = ESailGraphicsMode::ThreeDimensional;
     float TransitionTime = 0.0f;
     bool bDepartureBroadcast = false;
+    bool bUpdatingGraphicModeChecks = false;
 };

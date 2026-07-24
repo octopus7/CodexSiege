@@ -700,79 +700,126 @@ def _build_title_blueprint():
         1,
     )
     label_slot = mode_row.add_child_to_horizontal_box(mode_label)
-    _set_padding(label_slot, _margin(0, 9, 24, 0))
+    _set_padding(label_slot, _margin(0, 7, 30, 0))
 
-    combo_frame = _border(
-        tree,
-        "GraphicModeBronzeFrame",
-        unreal.LinearColor(0.56, 0.31, 0.09, 1.0),
-        _margin(2, 2, 2, 2),
-    )
-    combo_frame_size = _size(tree, "GraphicModeFrameSize", 230, 44)
-    _add(combo_frame_size, combo_frame)
-    combo_slot = mode_row.add_child_to_horizontal_box(combo_frame_size)
-    _set_padding(combo_slot, _margin(0, 0, 0, 0))
+    mode_options = _construct(tree, unreal.HorizontalBox, "GraphicModeOptions")
+    options_slot = mode_row.add_child_to_horizontal_box(mode_options)
+    _set_padding(options_slot, _margin(0, 0, 0, 0))
 
-    mode_combo = _construct(tree, unreal.ComboBoxString, "GraphicModeComboBox")
-    _call(mode_combo, "add_option", "3D")
-    _call(mode_combo, "add_option", "2D")
-    _call(mode_combo, "set_selected_option", "3D")
-    _set(mode_combo, "font", _font(17, 0))
-    _set(mode_combo, "foreground_color", _slate_color(INK))
-    _set(mode_combo, "content_padding", _margin(18, 8, 12, 8))
+    def radio_brush(fill_color, outline_color, outline_width):
+        brush = unreal.SlateBrush()
+        _set(
+            brush,
+            "draw_as",
+            _enum(unreal.SlateBrushDrawType, "ROUNDED_BOX"),
+        )
+        _set(brush, "image_size", unreal.Vector2D(24, 24))
+        _set(brush, "tint_color", _slate_color(fill_color))
+        outline = unreal.SlateBrushOutlineSettings()
+        _set(
+            outline,
+            "rounding_type",
+            _enum(unreal.SlateBrushRoundingType, "HALF_HEIGHT_RADIUS"),
+        )
+        _set(outline, "color", _slate_color(outline_color))
+        _set(outline, "width", float(outline_width))
+        _set(brush, "outline_settings", outline)
+        return brush
 
-    combo_style = mode_combo.get_editor_property("widget_style")
-    button_style = combo_style.get_editor_property("combo_button_style")
-    inner_button = button_style.get_editor_property("button_style")
-    for brush_name, color in (
-        ("normal", unreal.LinearColor(0.76, 0.66, 0.45, 1.0)),
-        ("hovered", unreal.LinearColor(0.87, 0.76, 0.52, 1.0)),
-        ("pressed", unreal.LinearColor(0.66, 0.54, 0.34, 1.0)),
+    radio_style = unreal.CheckBoxStyle()
+    for brush_name, brush in (
+        (
+            "unchecked_image",
+            radio_brush(
+                unreal.LinearColor(0.02, 0.015, 0.01, 0.48),
+                unreal.LinearColor(0.76, 0.51, 0.16, 1.0),
+                2.0,
+            ),
+        ),
+        (
+            "unchecked_hovered_image",
+            radio_brush(
+                unreal.LinearColor(0.10, 0.065, 0.025, 0.72),
+                unreal.LinearColor(0.95, 0.75, 0.32, 1.0),
+                2.5,
+            ),
+        ),
+        (
+            "unchecked_pressed_image",
+            radio_brush(
+                unreal.LinearColor(0.18, 0.10, 0.025, 0.88),
+                unreal.LinearColor(0.98, 0.79, 0.36, 1.0),
+                2.5,
+            ),
+        ),
+        (
+            "checked_image",
+            radio_brush(
+                unreal.LinearColor(0.88, 0.61, 0.18, 1.0),
+                unreal.LinearColor(0.18, 0.09, 0.02, 1.0),
+                3.5,
+            ),
+        ),
+        (
+            "checked_hovered_image",
+            radio_brush(
+                unreal.LinearColor(1.0, 0.78, 0.31, 1.0),
+                unreal.LinearColor(0.23, 0.12, 0.025, 1.0),
+                3.5,
+            ),
+        ),
+        (
+            "checked_pressed_image",
+            radio_brush(
+                unreal.LinearColor(0.72, 0.43, 0.10, 1.0),
+                unreal.LinearColor(0.13, 0.065, 0.015, 1.0),
+                3.5,
+            ),
+        ),
     ):
-        brush = inner_button.get_editor_property(brush_name)
-        _set(brush, "draw_as", _enum(unreal.SlateBrushDrawType, "BOX"))
-        _set(brush, "tint_color", _slate_color(color))
-        _set(inner_button, brush_name, brush)
-    _set(button_style, "button_style", inner_button)
-    _set(combo_style, "combo_button_style", button_style)
-    _set(mode_combo, "widget_style", combo_style)
-
-    item_style = mode_combo.get_editor_property("item_style")
-    for brush_name, color in (
-        ("even_row_background_brush", unreal.LinearColor(0.76, 0.66, 0.45, 1.0)),
-        ("odd_row_background_brush", unreal.LinearColor(0.76, 0.66, 0.45, 1.0)),
-        ("even_row_background_hovered_brush", unreal.LinearColor(0.87, 0.76, 0.52, 1.0)),
-        ("odd_row_background_hovered_brush", unreal.LinearColor(0.87, 0.76, 0.52, 1.0)),
-        ("active_brush", unreal.LinearColor(0.66, 0.54, 0.34, 1.0)),
-        ("active_hovered_brush", unreal.LinearColor(0.87, 0.76, 0.52, 1.0)),
-        ("inactive_brush", unreal.LinearColor(0.76, 0.66, 0.45, 1.0)),
-        ("inactive_hovered_brush", unreal.LinearColor(0.87, 0.76, 0.52, 1.0)),
-    ):
-        brush = item_style.get_editor_property(brush_name)
-        _set(brush, "draw_as", _enum(unreal.SlateBrushDrawType, "BOX"))
-        _set(brush, "tint_color", _slate_color(color))
-        _set(item_style, brush_name, brush)
-    _set(item_style, "text_color", _slate_color(INK))
-    _set(item_style, "selected_text_color", _slate_color(INK))
-    _set(mode_combo, "item_style", item_style)
-    mode_overlay = _construct(tree, unreal.Overlay, "GraphicModeOverlay")
-    _add(combo_frame, mode_overlay)
-    mode_overlay.add_child_to_overlay(mode_combo)
-    mode_value = _text(
-        tree,
-        "GraphicModeValueText",
-        "3D",
-        17,
-        INK,
-        0,
-    )
-    mode_value_slot = mode_overlay.add_child_to_overlay(mode_value)
-    _set_padding(mode_value_slot, _margin(18, 8, 48, 8))
+        _set(radio_style, brush_name, brush)
+    _set(radio_style, "padding", _margin(0, 0, 7, 0))
+    _set(radio_style, "foreground_color", _slate_color(PARCHMENT))
     _set(
-        mode_value,
-        "visibility",
-        _enum(unreal.SlateVisibility, "HIT_TEST_INVISIBLE"),
+        radio_style,
+        "hovered_foreground",
+        _slate_color(unreal.LinearColor(0.98, 0.82, 0.45, 1.0)),
     )
+    _set(
+        radio_style,
+        "checked_foreground",
+        _slate_color(unreal.LinearColor(0.98, 0.82, 0.45, 1.0)),
+    )
+
+    mode_3d = _construct(tree, unreal.CheckBox, "GraphicMode3DCheckBox")
+    _set(mode_3d, "widget_style", radio_style)
+    _call(mode_3d, "set_is_checked", True)
+    mode_3d_label = _text(
+        tree,
+        "GraphicMode3DLabel",
+        "3D",
+        18,
+        PARCHMENT,
+        1,
+    )
+    _add(mode_3d, mode_3d_label)
+    mode_3d_slot = mode_options.add_child_to_horizontal_box(mode_3d)
+    _set_padding(mode_3d_slot, _margin(0, 3, 30, 0))
+
+    mode_2d = _construct(tree, unreal.CheckBox, "GraphicMode2DCheckBox")
+    _set(mode_2d, "widget_style", radio_style)
+    _call(mode_2d, "set_is_checked", False)
+    mode_2d_label = _text(
+        tree,
+        "GraphicMode2DLabel",
+        "2D",
+        18,
+        PARCHMENT,
+        1,
+    )
+    _add(mode_2d, mode_2d_label)
+    mode_2d_slot = mode_options.add_child_to_horizontal_box(mode_2d)
+    _set_padding(mode_2d_slot, _margin(0, 3, 0, 0))
 
     spacer = _construct(tree, unreal.Spacer, "TitleFlexibleSpacer")
     spacer_slot = content.add_child_to_vertical_box(spacer)
@@ -845,11 +892,11 @@ def _build_title_blueprint():
         name
         for name in (
             "DepartureButton",
-            "GraphicModeComboBox",
+            "GraphicMode3DCheckBox",
+            "GraphicMode2DCheckBox",
             "TitlePanel",
             "LogoImage",
             "LogoScaleBox",
-            "GraphicModeValueText",
             "FullscreenBlackOverlay",
         )
         if not _find_widget(tree, name)

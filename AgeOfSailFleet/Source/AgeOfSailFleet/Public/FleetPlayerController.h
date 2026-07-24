@@ -5,6 +5,7 @@
 #include "FleetPlayerController.generated.h"
 
 class ASailShip;
+class AFleetCameraPawn;
 
 UCLASS()
 class AGEOFSAILFLEET_API AFleetPlayerController : public APlayerController
@@ -35,6 +36,9 @@ private:
     void BeginSelection();
     void EndSelection();
     void IssueContextCommand();
+    void ToggleFreeFlightMode();
+    bool IsFreeFlightActive() const;
+    void ApplyStrategyInputMode();
     void SelectShip(ASailShip* Ship, bool bAdditive);
     void SelectShipsInRectangle(bool bAdditive);
 };

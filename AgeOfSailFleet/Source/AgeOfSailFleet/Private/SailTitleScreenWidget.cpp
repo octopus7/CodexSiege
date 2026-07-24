@@ -2,8 +2,7 @@
 
 #include "Components/Border.h"
 #include "Components/Button.h"
-#include "Components/ComboBoxString.h"
-#include "Components/TextBlock.h"
+#include "Components/CheckBox.h"
 
 namespace SailTitleTransition
 {
@@ -27,20 +26,16 @@ void USailTitleScreenWidget::NativeConstruct()
         DepartureButton->OnClicked.AddUniqueDynamic(
             this, &USailTitleScreenWidget::HandleDepartureClicked);
     }
-    if (GraphicModeComboBox)
+    SetSelectedGraphicsMode(ESailGraphicsMode::ThreeDimensional);
+    if (GraphicMode3DCheckBox)
     {
-        GraphicModeComboBox->ClearOptions();
-        GraphicModeComboBox->AddOption(TEXT("3D"));
-        GraphicModeComboBox->AddOption(TEXT("2D"));
-        SelectedGraphicsMode = ESailGraphicsMode::ThreeDimensional;
-        GraphicModeComboBox->SetSelectedIndex(0);
-        GraphicModeComboBox->RefreshOptions();
-        if (GraphicModeValueText)
-        {
-            GraphicModeValueText->SetText(FText::FromString(TEXT("3D")));
-        }
-        GraphicModeComboBox->OnSelectionChanged.AddUniqueDynamic(
-            this, &USailTitleScreenWidget::HandleGraphicModeChanged);
+        GraphicMode3DCheckBox->OnCheckStateChanged.AddUniqueDynamic(
+            this, &USailTitleScreenWidget::Handle3DModeCheckChanged);
+    }
+    if (GraphicMode2DCheckBox)
+    {
+        GraphicMode2DCheckBox->OnCheckStateChanged.AddUniqueDynamic(
+            this, &USailTitleScreenWidget::Handle2DModeCheckChanged);
     }
 }
 
@@ -51,10 +46,15 @@ void USailTitleScreenWidget::NativeDestruct()
         DepartureButton->OnClicked.RemoveDynamic(
             this, &USailTitleScreenWidget::HandleDepartureClicked);
     }
-    if (GraphicModeComboBox)
+    if (GraphicMode3DCheckBox)
     {
-        GraphicModeComboBox->OnSelectionChanged.RemoveDynamic(
-            this, &USailTitleScreenWidget::HandleGraphicModeChanged);
+        GraphicMode3DCheckBox->OnCheckStateChanged.RemoveDynamic(
+            this, &USailTitleScreenWidget::Handle3DModeCheckChanged);
+    }
+    if (GraphicMode2DCheckBox)
+    {
+        GraphicMode2DCheckBox->OnCheckStateChanged.RemoveDynamic(
+            this, &USailTitleScreenWidget::Handle2DModeCheckChanged);
     }
 
     Super::NativeDestruct();
@@ -87,21 +87,53 @@ void USailTitleScreenWidget::ResetTitleTransition()
     }
 }
 
-void USailTitleScreenWidget::HandleGraphicModeChanged(
-    const FString SelectedItem,
-    ESelectInfo::Type SelectionType)
+void USailTitleScreenWidget::Handle3DModeCheckChanged(const bool bIsChecked)
 {
-    (void)SelectionType;
-    SelectedGraphicsMode =
-        SelectedItem.Equals(TEXT("2D"), ESearchCase::IgnoreCase)
-            ? ESailGraphicsMode::TwoDimensional
-            : ESailGraphicsMode::ThreeDimensional;
-    if (GraphicModeValueText)
+    if (bUpdatingGraphicModeChecks)
     {
-        GraphicModeValueText->SetText(FText::FromString(
-            SelectedGraphicsMode == ESailGraphicsMode::TwoDimensional
-                ? TEXT("2D")
-                : TEXT("3D")));
+        return;
+    }
+    if (bIsChecked)
+    {
+        SetSelectedGraphicsMode(ESailGraphicsMode::ThreeDimensional);
+        return;
+    }
+    SynchronizeGraphicModeChecks();
+}
+
+void USailTitleScreenWidget::Handle2DModeCheckChanged(const bool bIsChecked)
+{
+    if (bUpdatingGraphicModeChecks)
+    {
+        return;
+    }
+    if (bIsChecked)
+    {
+        SetSelectedGraphicsMode(ESailGraphicsMode::TwoDimensional);
+        return;
+    }
+    SynchronizeGraphicModeChecks();
+}
+
+void USailTitleScreenWidget::SetSelectedGraphicsMode(
+    const ESailGraphicsMode GraphicsMode)
+{
+    SelectedGraphicsMode = GraphicsMode;
+    SynchronizeGraphicModeChecks();
+}
+
+void USailTitleScreenWidget::SynchronizeGraphicModeChecks()
+{
+    TGuardValue<bool> UpdatingGuard(bUpdatingGraphicModeChecks, true);
+    if (GraphicMode3DCheckBox)
+    {
+        GraphicMode3DCheckBox->SetIsChecked(
+            SelectedGraphicsMode == ESailGraphicsMode::ThreeDimensional);
+    }
+    if (GraphicMode2DCheckBox)
+    {
+        GraphicMode2DCheckBox->SetIsChecked(
+            SelectedGraphicsMode == ESailGraphicsMode::TwoDimensional);
     }
 }
 
