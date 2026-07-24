@@ -1,13 +1,15 @@
 #include "SiegePlayerController.h"
 
 #include "Blueprint/UserWidget.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "SiegeTitleWidget.h"
 
 void ASiegePlayerController::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (IsLocalController())
+    if (IsLocalController() && !FParse::Param(FCommandLine::Get(), TEXT("SkipTitle")))
     {
         TitleWidget = CreateWidget<USiegeTitleWidget>(this, USiegeTitleWidget::StaticClass());
         if (TitleWidget)

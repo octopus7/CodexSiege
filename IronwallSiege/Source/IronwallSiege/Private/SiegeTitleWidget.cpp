@@ -65,12 +65,12 @@ void USiegeTitleWidget::NativeConstruct()
 
     MainMenu = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("MainMenu"));
     Canvas->AddChild(MainMenu);
-    if (UCanvasPanelSlot* Slot = Cast<UCanvasPanelSlot>(MainMenu->Slot))
+    if (UCanvasPanelSlot* MainMenuSlot = Cast<UCanvasPanelSlot>(MainMenu->Slot))
     {
-        Slot->SetAnchors(FAnchors(0.08f, 0.21f));
-        Slot->SetAlignment(FVector2D(0, 0));
-        Slot->SetSize(FVector2D(540, 620));
-        Slot->SetZOrder(2);
+        MainMenuSlot->SetAnchors(FAnchors(0.08f, 0.21f));
+        MainMenuSlot->SetAlignment(FVector2D(0, 0));
+        MainMenuSlot->SetSize(FVector2D(540, 620));
+        MainMenuSlot->SetZOrder(2);
     }
 
     UTextBlock* Title = AddText(MainMenu, TEXT("IRONWALL SIEGE"), 54, FLinearColor(0.92f, 0.83f, 0.61f));
@@ -91,11 +91,11 @@ void USiegeTitleWidget::NativeConstruct()
 
     OptionsMenu = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("OptionsMenu"));
     Canvas->AddChild(OptionsMenu);
-    if (UCanvasPanelSlot* Slot = Cast<UCanvasPanelSlot>(OptionsMenu->Slot))
+    if (UCanvasPanelSlot* OptionsMenuSlot = Cast<UCanvasPanelSlot>(OptionsMenu->Slot))
     {
-        Slot->SetAnchors(FAnchors(0.08f, 0.22f));
-        Slot->SetSize(FVector2D(620, 590));
-        Slot->SetZOrder(3);
+        OptionsMenuSlot->SetAnchors(FAnchors(0.08f, 0.22f));
+        OptionsMenuSlot->SetSize(FVector2D(620, 590));
+        OptionsMenuSlot->SetZOrder(3);
     }
 
     AddText(OptionsMenu, TEXT("OPTIONS"), 44, FLinearColor(0.92f, 0.83f, 0.61f));
@@ -145,8 +145,8 @@ UTextBlock* USiegeTitleWidget::AddText(
     Block->SetText(FText::FromString(Text));
     Block->SetColorAndOpacity(FSlateColor(Color));
     SetTextSize(Block, Size);
-    UVerticalBoxSlot* Slot = Parent->AddChildToVerticalBox(Block);
-    Slot->SetPadding(FMargin(0, 4, 0, 8));
+    UVerticalBoxSlot* TextSlot = Parent->AddChildToVerticalBox(Block);
+    TextSlot->SetPadding(FMargin(0, 4, 0, 8));
     return Block;
 }
 
@@ -163,8 +163,8 @@ UButton* USiegeTitleWidget::AddMenuButton(UVerticalBox* Parent, const FString& L
     SetTextSize(Text, 22);
     Button->AddChild(Text);
 
-    UVerticalBoxSlot* Slot = Parent->AddChildToVerticalBox(Button);
-    Slot->SetPadding(FMargin(0, 7, 0, 7));
+    UVerticalBoxSlot* ButtonSlot = Parent->AddChildToVerticalBox(Button);
+    ButtonSlot->SetPadding(FMargin(0, 7, 0, 7));
     return Button;
 }
 

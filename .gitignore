@@ -1,0 +1,50 @@
+# Unreal Engine generated directories
+**/Binaries/
+**/Build/
+**/DerivedDataCache/
+**/Intermediate/
+**/Saved/
+
+# Visual Studio, Rider, and generated project files
+.vs/
+.vscode/
+.idea/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+*.code-workspace
+
+# Unreal generated IDE metadata
+*.xcodeproj
+*.xcworkspace
+*.xcuserdata
+*.xcuserstate
+
+# Compiled and debug artifacts
+*.dll
+*.exe
+*.exp
+*.ilk
+*.lib
+*.obj
+*.pdb
+*.pch
+*.ipch
+
+# Local caches, crash dumps, and logs
+__pycache__/
+*.py[cod]
+*.log
+*.dmp
+*.tmp
+*.temp
+Thumbs.db
+.DS_Store
+
+# Local Blender recovery files
+*.blend1
+*.blend2
+*.blend@

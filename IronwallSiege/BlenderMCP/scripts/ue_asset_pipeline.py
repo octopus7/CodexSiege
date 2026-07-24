@@ -11,6 +11,7 @@ import math
 from pathlib import Path
 
 import bpy
+from mathutils import Vector
 
 
 ASSETS = {
@@ -64,6 +65,20 @@ def _collision_for(root_name: str) -> list[bpy.types.Object]:
     return [obj for obj in bpy.data.objects if obj.name.startswith(prefix)]
 
 
+def _family_dimensions(root: bpy.types.Object, meshes: list[bpy.types.Object]) -> tuple[float, float, float]:
+    """Return the complete render-family bounds in root-local coordinates."""
+    inverse_root = root.matrix_world.inverted()
+    points = [
+        inverse_root @ obj.matrix_world @ Vector(corner)
+        for obj in meshes
+        for corner in obj.bound_box
+    ]
+    minimum = Vector((min(point.x for point in points), min(point.y for point in points), min(point.z for point in points)))
+    maximum = Vector((max(point.x for point in points), max(point.y for point in points), max(point.z for point in points)))
+    dimensions = maximum - minimum
+    return tuple(dimensions)
+
+
 def validate_scene(tolerance: float = 0.05) -> dict:
     report = {"errors": [], "warnings": [], "assets": {}}
     for name, spec in ASSETS.items():
@@ -90,7 +105,7 @@ def validate_scene(tolerance: float = 0.05) -> dict:
                 asset_report["warnings"].append(f"{obj.name}: no material slot.")
 
         expected = spec["dimensions"]
-        actual = tuple(root.dimensions)
+        actual = _family_dimensions(root, meshes)
         for axis, expected_value, actual_value in zip("XYZ", expected, actual):
             if expected_value > 0 and abs(actual_value - expected_value) / expected_value > tolerance:
                 asset_report["warnings"].append(
@@ -151,6 +166,7 @@ def export_assets(export_root: str) -> list[str]:
             apply_scale_options="FBX_SCALE_UNITS",
             axis_forward="-Y",
             axis_up="Z",
+            mesh_smooth_type="FACE",
             use_tspace=True,
             use_custom_props=True,
         )

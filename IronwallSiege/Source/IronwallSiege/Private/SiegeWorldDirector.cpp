@@ -24,8 +24,8 @@ void ASiegeWorldDirector::BeginPlay()
         FVector(0, 0, 2200),
         FRotator(-42, -28, 0)))
     {
-        Sun->GetDirectionalLightComponent()->SetIntensity(6.0f);
-        Sun->GetDirectionalLightComponent()->SetLightColor(FLinearColor(1.0f, 0.72f, 0.52f));
+        Sun->GetLightComponent()->SetIntensity(6.0f);
+        Sun->GetLightComponent()->SetLightColor(FLinearColor(1.0f, 0.72f, 0.52f));
     }
 
     SpawnAsset(ESiegeAssetSlot::Ground, FVector::ZeroVector, FRotator::ZeroRotator, FVector::OneVector, TEXT("SiegeField"));
@@ -74,7 +74,6 @@ ASiegeAssetProxyActor* ASiegeWorldDirector::SpawnAsset(
 {
     FActorSpawnParameters Parameters;
     Parameters.Owner = this;
-    Parameters.Name = MakeUniqueObjectName(GetWorld(), ASiegeAssetProxyActor::StaticClass(), FName(*Label));
 
     ASiegeAssetProxyActor* Actor = GetWorld()->SpawnActor<ASiegeAssetProxyActor>(
         ASiegeAssetProxyActor::StaticClass(),

@@ -39,5 +39,7 @@ private:
     UPROPERTY(VisibleAnywhere)
     TObjectPtr<UStaticMeshComponent> ReplacementMesh;
 
+    bool bEmitValidationLog = false;
+
     void BuildProceduralMesh();
 };

@@ -192,7 +192,9 @@ void ASiegeAssetProxyActor::BeginPlay()
 void ASiegeAssetProxyActor::ConfigureAsset(const ESiegeAssetSlot NewSlot)
 {
     AssetSlot = NewSlot;
+    bEmitValidationLog = true;
     RefreshVisual();
+    bEmitValidationLog = false;
 }
 
 void ASiegeAssetProxyActor::RefreshVisual()
@@ -218,6 +220,19 @@ void ASiegeAssetProxyActor::RefreshVisual()
     if (!Replacement)
     {
         BuildProceduralMesh();
+    }
+    else if (bEmitValidationLog)
+    {
+        const FVector BoundsExtent = Replacement->GetBounds().BoxExtent;
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("IronwallSiegeAsset slot=%s source=StaticMesh asset=%s extent_cm=(%.1f,%.1f,%.1f)"),
+            *StaticEnum<ESiegeAssetSlot>()->GetNameStringByValue(static_cast<int64>(AssetSlot)),
+            *Replacement->GetPathName(),
+            BoundsExtent.X,
+            BoundsExtent.Y,
+            BoundsExtent.Z);
     }
 }
 
@@ -325,6 +340,17 @@ void ASiegeAssetProxyActor::BuildProceduralMesh()
         Mesh.Colors,
         Mesh.Tangents,
         true);
+
+    if (bEmitValidationLog)
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("IronwallSiegeAsset slot=%s source=Procedural vertices=%d triangles=%d"),
+            *StaticEnum<ESiegeAssetSlot>()->GetNameStringByValue(static_cast<int64>(AssetSlot)),
+            Mesh.Vertices.Num(),
+            Mesh.Triangles.Num() / 3);
+    }
 
     UMaterialInterface* BaseMaterial = LoadObject<UMaterialInterface>(
         nullptr,

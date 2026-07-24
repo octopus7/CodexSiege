@@ -2,6 +2,8 @@
 
 #include "Engine/Engine.h"
 #include "Engine/StaticMesh.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "SiegeResourceSet.h"
 #include "SiegeUserSettings.h"
 
@@ -21,6 +23,11 @@ void USiegeGameInstance::Init()
     if (const USiegeUserSettings* Settings = Cast<USiegeUserSettings>(GEngine->GetGameUserSettings()))
     {
         SelectedResourceSetId = Settings->SelectedResourceSetId;
+    }
+
+    if (FParse::Param(FCommandLine::Get(), TEXT("BlenderProduction")))
+    {
+        SelectedResourceSetId = TEXT("BlenderProduction");
     }
 
     if (GetSelectedResourceSetIndex() == INDEX_NONE)
