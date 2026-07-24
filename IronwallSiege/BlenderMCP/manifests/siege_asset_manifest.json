@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "project": "Ironwall Siege",
+  "coordinate_contract": {
+    "authoring_units": "meters",
+    "unreal_units": "centimeters",
+    "up_axis": "Z",
+    "unreal_forward_axis": "X",
+    "fbx_forward_axis": "-Y",
+    "fbx_up_axis": "Z",
+    "pivot_rule": "ground center; forward-facing assets point +X",
+    "transform_rule": "apply rotation and scale before export"
+  },
+  "style": {
+    "period": "late medieval European, 14th-15th century",
+    "target": "game-ready modular PBR",
+    "texture_density": "512 px per meter",
+    "materials": ["M_Stone", "M_Wood", "M_Iron", "M_Cloth", "M_Leather"],
+    "lod_triangle_ratios": [1.0, 0.5, 0.2]
+  },
+  "assets": [
+    {
+      "slot": "Ground",
+      "object": "SM_Ground_SiegeField",
+      "dimensions_m": [90.0, 84.0, 0.5],
+      "export": "SM_Ground_SiegeField.fbx",
+      "unreal_path": "/Game/Art/Blender/SM_Ground_SiegeField",
+      "notes": "Tiling terrain patch; keep topology light and material-led."
+    },
+    {
+      "slot": "Wall",
+      "object": "SM_Fortress_Wall_A",
+      "dimensions_m": [6.0, 1.6, 6.9],
+      "export": "SM_Fortress_Wall_A.fbx",
+      "unreal_path": "/Game/Art/Blender/SM_Fortress_Wall_A",
+      "notes": "Exactly tileable along local X; crenellation endpoints must align."
+    },
+    {
+      "slot": "Gate",
+      "object": "SM_Fortress_Gatehouse_A",
+      "dimensions_m": [6.8, 2.0, 7.6],
+      "export": "SM_Fortress_Gatehouse_A.fbx",
+      "unreal_path": "/Game/Art/Blender/SM_Fortress_Gatehouse_A",
+      "notes": "Separate gate leaves as SM_Fortress_GateLeaf_L/R children if animation is added later."
+    },
+    {
+      "slot": "Tower",
+      "object": "SM_Fortress_Tower_A",
+      "dimensions_m": [4.9, 4.9, 8.8],
+      "export": "SM_Fortress_Tower_A.fbx",
+      "unreal_path": "/Game/Art/Blender/SM_Fortress_Tower_A",
+      "notes": "Circular 16-24 side silhouette; wall connection areas remain flat enough to avoid gaps."
+    },
+    {
+      "slot": "Trebuchet",
+      "object": "SM_Siege_Trebuchet_A",
+      "dimensions_m": [10.4, 3.4, 8.4],
+      "export": "SM_Siege_Trebuchet_A.fbx",
+      "unreal_path": "/Game/Art/Blender/SM_Siege_Trebuchet_A",
+      "notes": "Keep arm, counterweight, sling, axles, and wheels as named children for future rigging."
+    },
+    {
+      "slot": "BatteringRam",
+      "object": "SM_Siege_BatteringRam_A",
+      "dimensions_m": [7.0, 3.4, 4.6],
+      "export": "SM_Siege_BatteringRam_A.fbx",
+      "unreal_path": "/Game/Art/Blender/SM_Siege_BatteringRam_A",
+      "notes": "Keep ram log, suspension, wheels, and roof frame as named children."
+    },
+    {
+      "slot": "Infantry",
+      "object": "SM_Unit_Infantry_A",
+      "dimensions_m": [0.9, 0.7, 1.85],
+      "export": "SM_Unit_Infantry_A.fbx",
+      "unreal_path": "/Game/Art/Blender/SM_Unit_Infantry_A",
+      "notes": "Static neutral-ready pose for this milestone; separated shield and spear."
+    }
+  ]
+}
