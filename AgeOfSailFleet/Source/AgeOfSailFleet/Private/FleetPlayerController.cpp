@@ -4,7 +4,17 @@
 #include "FleetCameraPawn.h"
 #include "FleetMoveCommandMarker.h"
 #include "InputCoreTypes.h"
+#include "Kismet/GameplayStatics.h"
 #include "SailShip.h"
+
+namespace FleetTimeScale
+{
+    constexpr float Default = 1.0f;
+    constexpr float Minimum = 0.5f;
+    constexpr float Maximum = 8.0f;
+    constexpr float DecreaseStep = 0.5f;
+    constexpr float IncreaseStep = 1.5f;
+}
 
 AFleetPlayerController::AFleetPlayerController()
 {
@@ -17,6 +27,7 @@ AFleetPlayerController::AFleetPlayerController()
 void AFleetPlayerController::BeginPlay()
 {
     Super::BeginPlay();
+    ApplyTimeScale(FleetTimeScale::Default);
     ApplyStrategyInputMode();
 }
 
@@ -48,6 +59,9 @@ void AFleetPlayerController::SetupInputComponent()
     InputComponent->BindAction(TEXT("ContextCommand"), IE_Pressed, this, &AFleetPlayerController::IssueContextCommand);
     InputComponent->BindAction(TEXT("SelectAll"), IE_Pressed, this, &AFleetPlayerController::SelectAllFriendlyShips);
     InputComponent->BindAction(TEXT("ToggleFreeFlight"), IE_Pressed, this, &AFleetPlayerController::ToggleFreeFlightMode);
+    InputComponent->BindAction(TEXT("ResetTimeScale"), IE_Pressed, this, &AFleetPlayerController::ResetTimeScale);
+    InputComponent->BindAction(TEXT("DecreaseTimeScale"), IE_Pressed, this, &AFleetPlayerController::DecreaseTimeScale);
+    InputComponent->BindAction(TEXT("IncreaseTimeScale"), IE_Pressed, this, &AFleetPlayerController::IncreaseTimeScale);
 }
 
 void AFleetPlayerController::ClearSelection()
@@ -226,6 +240,30 @@ void AFleetPlayerController::ToggleFreeFlightMode()
     {
         ApplyStrategyInputMode();
     }
+}
+
+void AFleetPlayerController::ResetTimeScale()
+{
+    ApplyTimeScale(FleetTimeScale::Default);
+}
+
+void AFleetPlayerController::DecreaseTimeScale()
+{
+    ApplyTimeScale(CurrentTimeScale - FleetTimeScale::DecreaseStep);
+}
+
+void AFleetPlayerController::IncreaseTimeScale()
+{
+    ApplyTimeScale(CurrentTimeScale + FleetTimeScale::IncreaseStep);
+}
+
+void AFleetPlayerController::ApplyTimeScale(const float NewTimeScale)
+{
+    CurrentTimeScale = FMath::Clamp(
+        NewTimeScale,
+        FleetTimeScale::Minimum,
+        FleetTimeScale::Maximum);
+    UGameplayStatics::SetGlobalTimeDilation(this, CurrentTimeScale);
 }
 
 bool AFleetPlayerController::IsFreeFlightActive() const

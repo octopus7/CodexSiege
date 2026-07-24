@@ -53,17 +53,22 @@ The recreated prototype should provide:
 - Three distinct rates: first-rate ship of the line, second-rate ship of the
   line, and heavy frigate.
 - Click, box, additive, and select-all fleet selection; right-click formation
-  movement and right-click attack orders.
+  movement and right-click attack orders. Selected ships have rotating dashed
+  water rings, drag selection has an outlined rectangle, and move orders create
+  a short-lived converging 3D arrow marker.
 - Wind-dependent speed, broadside positioning, collision avoidance, cannon
   ballistics, damage, destruction effects, and sinking.
 - A procedural ocean, layered wave normal, visible wakes, cannon muzzle flashes,
-  hull impacts, water splashes, enlarged cannonballs, and ballistic trails.
+  restrained powder-smoke hull impacts, water splashes, enlarged cannonballs,
+  ballistic trails, and animated waterline foam while a ship sinks.
 - A complete 3D Blender-authored presentation plus a faction-colored
   camera-relative eight-direction 2D sprite mode.
 - A battle HUD with oval captain portraits under interchangeable
   bronze/silver/gold locket frames, captain and ship names, image-only date
   glyphs, and a wind arrow.
-- `C` toggling between the strategy camera and free flight.
+- `V` toggling between the strategy camera and free flight.
+- Runtime time scaling without additional HUD: `Z` restores 1×, `X` subtracts
+  0.5×, and `C` adds 1.5× within a safe 0.5×–8× range.
 
 ## 4. Required environment
 
@@ -146,8 +151,8 @@ Implement the native layers in this dependency order:
 1. `ACannonballActor`
 2. `ASailShip`
 3. `AFleetBattleDirector` and `ASailOceanActor`
-4. `AShipWakeActor` and `AFlipbookEffectActor`
-5. `AFleetCameraPawn` and `AFleetPlayerController`
+4. `AShipWakeActor`, `ASinkingFoamActor`, and `AFlipbookEffectActor`
+5. `AFleetMoveCommandMarker`, `AFleetCameraPawn`, and `AFleetPlayerController`
 6. `USailFleetHUDWidget` and `USailTitleScreenWidget`
 7. `ASailGameMode`
 8. editor-only `USailFleetUIEditorLibrary`
@@ -323,16 +328,20 @@ clean commandlet load. The final log must contain no `LogBlueprint: Error`.
 | `ASailGameMode` | Creates title/HUD/director and starts the selected 3D/2D battle |
 | `AFleetBattleDirector` | Environment, wind, fleet spawning, battle state, victory |
 | `ASailShip` | Rate data, art selection, sailing, AI, broadsides, damage, sinking |
-| `AFleetPlayerController` | Selection, formation move, attack orders, camera mode |
+| `AFleetPlayerController` | Selection, formation move, attack orders, camera mode, time scale |
 | `AFleetCameraPawn` | Fleet strategy camera and restorable free flight |
-| `ASailOceanActor` | 90,000uu procedural wave grid and crest coloring |
+| `AFleetMoveCommandMarker` | Eight thick 3D arrows converging onto a move destination |
+| `ASailOceanActor` | 270,000uu procedural wave grid and crest coloring |
 | `AShipWakeActor` | Speed-dependent paired foam ribbons |
+| `ASinkingFoamActor` | Animated foam patches sampled along the sinking hull/water intersection |
 | `ACannonballActor` | Ballistic projectile, visible ball/trail, ship/water impact |
-| `AFlipbookEffectActor` | Camera-facing 4×4 muzzle/hull/water animation |
+| `AFlipbookEffectActor` | Muzzle/water flipbooks and layered procedural hull-hit smoke |
 | HUD/title widgets | Binding and presentation only |
 
 The title sequence uses 0.45 s title fade, 0.55 s fade to black, battle start at
-black, and 0.70 s fade back.
+black, and 0.70 s fade back. During the title fade, the two rounded checkbox
+brushes receive explicit render opacity and are collapsed at zero so their
+cached ring outlines cannot survive into the black-screen phase.
 
 ## 10. Fleet and combat values
 
@@ -362,14 +371,27 @@ properly lateral. This is the behavior that prevents opening rams.
 
 ## 11. Ocean, effects, and presentation contracts
 
-- Ocean geometry: 61×61 grid, 1500uu cells, 90,000uu total width.
+- Ocean geometry: 181×181 grid, 1500uu cells, 270,000uu total width. This triples
+  each dimension and produces nine times the original area without changing the
+  fleet's initial deployment.
 - Geometry uses three sine layers; the material adds the same normal texture at
   tiling 18 and 47 with opposing panners and a 0.42 blend.
 - Fog remains light: density 0.0015, max opacity 0.55, start distance 10,000.
 - Wake samples every 0.18 s above speed 55 and retains points for 7 s.
 - Flipbooks are exactly 4×4; runtime UVs advance in 0.25 increments.
-- Cannon muzzle, hull impact, and water impact must be large enough for the fleet
+- Cannon muzzle and water-impact flipbooks must be large enough for the fleet
   camera. Do not divide a caller-supplied effect multiplier by 100 twice.
+- Hull hits use only a sub-0.17 s, 48%-scale flash from the source flipbook.
+  Four irregular procedural smoke layers then expand, rise, rotate, and fade
+  independently for roughly 1.65–2.23 s. Use low-saturation brown-grey vertex
+  colors with `M_ShipWake`; do not expose the full cartoon-like explosion sheet.
+- Sinking foam uses one actor and a fixed pool of 16 radial procedural patches.
+  First-, second-, and third-rate half extents are `1500×500×350`,
+  `1280×430×315`, and `1080×350×275`. Transform the water plane into the
+  rotating ellipsoid's local space, sample the intersection circle, and keep
+  the patches horizontal at the water surface. Each patch has independent
+  phase, spin, non-uniform scale, expansion, and fade. Once no hull/water
+  intersection remains, fade the final patches for 1.4 s and destroy the actor.
 - Material alpha is required; FX materials are translucent, unlit, and two-sided.
 - Font import requires a runtime `UFont` wrapper. Passing only a `FontFace` to
   Slate can produce LastResort `A` placeholders.
@@ -384,8 +406,13 @@ properly lateral. This is the behavior that prevents opening rams.
 - `Ctrl+A`: select all blue ships
 - `WASD`: strategy pan
 - Mouse wheel: strategy zoom
-- `C`: toggle free flight
+- `V`: toggle free flight
 - Free flight: mouse look, `WASD`, `Space`/left `Ctrl`, wheel speed
+- `Z`: restore global time scale to 1×
+- `X`: subtract 0.5× from the current time scale
+- `C`: add 1.5× to the current time scale
+
+Clamp runtime time scale to 0.5×–8× and do not add a HUD readout.
 
 Do not advertise the dormant Q/E/manual sailing mappings as active gameplay.
 The possessed pawn is the fleet camera, and ship firing is currently AI-driven.
@@ -402,9 +429,18 @@ The Age of Sail project was built through these commits:
 6. `ff8593e` — visible date and wind HUD
 7. `38bcdf5` — transparent title/HUD presentation cleanup
 8. `c207795` — free-flight camera and 3D/2D radio controls
+9. `7424d38` — procedural ocean enlarged to nine times the original area
+10. `8e663a5` — natural, non-aircraft free-flight vertical look
+11. `2bb6600` — converging 3D move-command marker
+12. `63a6c77` — rotating selection rings and box-selection outline
+13. `70d3125` — readable cannonballs, trails, muzzle flashes, and impacts
+14. `5462f83` — sinking foam, powder smoke, and thicker move arrows
+15. `8c04b12` — radio controls fade and collapse with the title screen
 
 The large integration commit does not reveal its internal operation order.
 Sections 6–7 present the safest dependency order inferred from the final source.
+The time-scale bindings described above are part of the current source state;
+record their eventual commit hash when this documentation update is committed.
 
 ## 14. Validation
 
@@ -432,8 +468,17 @@ Also verify visually:
 - Ships maintain broadside distance, fire visible effects, and sink.
 - Misses create water impacts; hits create hull impacts; cannonballs and trails
   remain readable from the fleet camera.
+- Hull hits show a brief flash followed by restrained layered powder smoke,
+  without replaying the full cartoon-like explosion.
+- A sinking ship produces multiple rotating/scaling foam patches along its
+  changing water-contact outline; the foam fades shortly after full submersion.
+- Selected ships have bright rotating dashed rings, the drag rectangle is
+  unfilled, and converging move arrows remain readable from the wide camera.
 - The date has tight spacing and no dark background; only the wind arrow shows.
-- `C` restores the exact strategy camera state after free flight.
+- The title's two radio rings fade with the rest of the title and leave no
+  cached outline during the black-screen transition.
+- `V` restores the exact strategy camera state after free flight.
+- `Z`, `X`, and `C` produce the documented 1× reset, -0.5× step, and +1.5× step.
 
 ## 15. Common failure modes
 
@@ -453,4 +498,7 @@ Also verify visually:
   names.
 - **Effects technically spawn but are invisible:** check world-size math,
   material alpha, bounds, camera-facing rotation, and fleet-camera scale.
-
+- **Radio rings remain after title fade:** explicitly drive checkbox render
+  opacity with the title alpha and collapse both controls when alpha reaches
+  zero; relying only on the ancestor border can leave a cached rounded-box draw
+  element for a frame.

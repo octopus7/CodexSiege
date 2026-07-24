@@ -37,8 +37,14 @@ private:
     void EndSelection();
     void IssueContextCommand();
     void ToggleFreeFlightMode();
+    void ResetTimeScale();
+    void DecreaseTimeScale();
+    void IncreaseTimeScale();
+    void ApplyTimeScale(float NewTimeScale);
     bool IsFreeFlightActive() const;
     void ApplyStrategyInputMode();
     void SelectShip(ASailShip* Ship, bool bAdditive);
     void SelectShipsInRectangle(bool bAdditive);
+
+    float CurrentTimeScale = 1.0f;
 };
