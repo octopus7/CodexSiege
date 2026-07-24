@@ -3,6 +3,7 @@
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/ComboBoxString.h"
+#include "Components/TextBlock.h"
 
 namespace SailTitleTransition
 {
@@ -31,10 +32,13 @@ void USailTitleScreenWidget::NativeConstruct()
         GraphicModeComboBox->ClearOptions();
         GraphicModeComboBox->AddOption(TEXT("3D"));
         GraphicModeComboBox->AddOption(TEXT("2D"));
-        GraphicModeComboBox->SetSelectedOption(
-            SelectedGraphicsMode == ESailGraphicsMode::TwoDimensional
-                ? TEXT("2D")
-                : TEXT("3D"));
+        SelectedGraphicsMode = ESailGraphicsMode::ThreeDimensional;
+        GraphicModeComboBox->SetSelectedIndex(0);
+        GraphicModeComboBox->RefreshOptions();
+        if (GraphicModeValueText)
+        {
+            GraphicModeValueText->SetText(FText::FromString(TEXT("3D")));
+        }
         GraphicModeComboBox->OnSelectionChanged.AddUniqueDynamic(
             this, &USailTitleScreenWidget::HandleGraphicModeChanged);
     }
@@ -92,6 +96,13 @@ void USailTitleScreenWidget::HandleGraphicModeChanged(
         SelectedItem.Equals(TEXT("2D"), ESearchCase::IgnoreCase)
             ? ESailGraphicsMode::TwoDimensional
             : ESailGraphicsMode::ThreeDimensional;
+    if (GraphicModeValueText)
+    {
+        GraphicModeValueText->SetText(FText::FromString(
+            SelectedGraphicsMode == ESailGraphicsMode::TwoDimensional
+                ? TEXT("2D")
+                : TEXT("3D")));
+    }
 }
 
 void USailTitleScreenWidget::HandleDepartureClicked()

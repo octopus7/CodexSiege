@@ -4,6 +4,7 @@
 #include "Components/Widget.h"
 #include "Engine/Font.h"
 #include "Engine/FontFace.h"
+#include "UObject/UObjectHash.h"
 
 #if WITH_EDITOR
 #include "Kismet2/KismetEditorUtilities.h"
@@ -51,6 +52,19 @@ void USailFleetUIEditorLibrary::ClearWidgetTree(UWidgetTree* WidgetTree)
 #if WITH_EDITOR
     if (WidgetTree && WidgetTree->RootWidget)
     {
+        // Widget objects detached by earlier rebuilds remain owned by the
+        // WidgetTree package until garbage collection. Mark every old object as
+        // non-variable before resetting the map, otherwise the compiler sees
+        // either a widget without a GUID or a stale GUID without a live widget.
+        TArray<UObject*> ExistingObjects;
+        GetObjectsWithOuter(WidgetTree, ExistingObjects, true);
+        for (UObject* ExistingObject : ExistingObjects)
+        {
+            if (UWidget* ExistingWidget = Cast<UWidget>(ExistingObject))
+            {
+                ExistingWidget->bIsVariable = false;
+            }
+        }
         if (UWidgetBlueprint* WidgetBlueprint =
                 WidgetTree->GetTypedOuter<UWidgetBlueprint>())
         {
@@ -82,6 +96,26 @@ void USailFleetUIEditorLibrary::CompileWidgetBlueprint(UObject* WidgetBlueprintO
 #if WITH_EDITOR
     if (UWidgetBlueprint* WidgetBlueprint = Cast<UWidgetBlueprint>(WidgetBlueprintObject))
     {
+        TArray<UWidget*> LiveWidgets;
+        WidgetBlueprint->WidgetTree->GetAllWidgets(LiveWidgets);
+        TSet<FName> LiveVariableNames;
+        for (UWidget* Widget : LiveWidgets)
+        {
+            if (Widget && Widget->bIsVariable)
+            {
+                LiveVariableNames.Add(Widget->GetFName());
+                WidgetBlueprint->WidgetVariableNameToGuidMap.FindOrAdd(
+                    Widget->GetFName(),
+                    FGuid::NewGuid());
+            }
+        }
+        for (auto It = WidgetBlueprint->WidgetVariableNameToGuidMap.CreateIterator(); It; ++It)
+        {
+            if (!LiveVariableNames.Contains(It.Key()))
+            {
+                It.RemoveCurrent();
+            }
+        }
         FKismetEditorUtilities::CompileBlueprint(WidgetBlueprint);
     }
 #endif

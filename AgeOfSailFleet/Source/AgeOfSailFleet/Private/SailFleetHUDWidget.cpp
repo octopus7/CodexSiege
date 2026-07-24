@@ -127,10 +127,9 @@ void USailFleetHUDWidget::SetDateGlyphTextures(
 }
 
 void USailFleetHUDWidget::SetWindGlyphTextures(
-    UTexture2D* Compass,
+    UTexture2D* /*Compass*/,
     UTexture2D* Arrow)
 {
-    ApplyGlyphTexture(TEXT("WindCompass"), Compass);
     ApplyGlyphTexture(TEXT("WindArrow"), Arrow);
 }
 
@@ -199,7 +198,6 @@ void USailFleetHUDWidget::BindExistingGlyphWidgets()
         TEXT("DateYearHundreds"),
         TEXT("DateYearTens"),
         TEXT("DateYearOnes"),
-        TEXT("WindCompass"),
         TEXT("WindArrow")
     };
 
@@ -301,20 +299,20 @@ void USailFleetHUDWidget::ApplyShipToCard(const FSailShipHUDEntry& Ship, FBoundS
     Card.FactionGlow->SetDesiredSizeOverride(LocketRenderSize);
     Card.LocketFrame->SetDesiredSizeOverride(LocketRenderSize);
     Card.Portrait->SetDesiredSizeOverride(LocketRenderSize);
+    Card.Portrait->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+    Card.Portrait->SetRenderScale(FVector2D(1.10f, 1.10f));
     const FLinearColor FactionGlowColor =
         bBlueFleet
             ? FLinearColor(0.025f, 0.20f, 1.0f, 0.68f)
             : FLinearColor(1.0f, 0.025f, 0.012f, 0.68f);
     Card.FactionGlow->SetColorAndOpacity(FactionGlowColor);
     Card.LocketFrame->SetColorAndOpacity(FLinearColor::White);
-    Card.RankText->SetText(
-        Rank == 3 ? NSLOCTEXT("SailFleetHUD", "RankThree", "III  ADMIRAL FLAGSHIP") :
-        Rank == 2 ? NSLOCTEXT("SailFleetHUD", "RankTwo", "II  SENIOR CAPTAIN") :
-                    NSLOCTEXT("SailFleetHUD", "RankOne", "I  SHIP CAPTAIN"));
-
     Card.CaptainName->SetText(Ship.CaptainName);
     Card.ShipName->SetText(Ship.ShipName);
-    Card.ShipClass->SetText(Ship.ShipClass);
+    // Keep both authored slots in the layout so the card retains its original
+    // height and lower whitespace, but display only captain and ship names.
+    Card.ShipClass->SetVisibility(ESlateVisibility::Hidden);
+    Card.RankText->SetVisibility(ESlateVisibility::Hidden);
 
     if (Ship.CaptainPortrait)
     {

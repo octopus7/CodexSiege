@@ -314,6 +314,13 @@ def _build_card(tree, card_number):
         "/Game/UI/Captains/T_Captain_Blue_Admiral_Ward_Oval",
         unreal.LinearColor(1.0, 1.0, 1.0, 1.0),
     )
+    # The authored oval mask is slightly smaller than the locket's inner rim.
+    # Overscan it beneath the frame so no transparent seam can show around the
+    # portrait; the frame is added afterward and therefore remains on top.
+    portrait_transform = unreal.WidgetTransform()
+    _set(portrait_transform, "scale", unreal.Vector2D(1.10, 1.10))
+    _set(portrait, "render_transform", portrait_transform)
+    _set(portrait, "render_transform_pivot", unreal.Vector2D(0.5, 0.5))
     portrait_overlay.add_child_to_overlay(portrait)
 
     locket_frame = _image(
@@ -356,6 +363,11 @@ def _build_card(tree, card_number):
     )
     ship_class_slot = content.add_child_to_vertical_box(ship_class)
     _set_padding(ship_class_slot, _margin(2, 0, 2, 0))
+    # Hidden (rather than Collapsed) deliberately keeps the original vertical
+    # allocation below the ship name while omitting this detail line.
+    hidden = _enum(unreal.SlateVisibility, "HIDDEN")
+    if hidden is not None:
+        _call(ship_class, "set_visibility", hidden)
 
     rank_text = _text(
         tree,
@@ -367,6 +379,8 @@ def _build_card(tree, card_number):
     )
     rank_slot = content.add_child_to_vertical_box(rank_text)
     _set_padding(rank_slot, _margin(2, 0, 2, 0))
+    if hidden is not None:
+        _call(rank_text, "set_visibility", hidden)
 
     health = _construct(tree, unreal.ProgressBar, "HealthBar{}".format(suffix))
     _call(health, "set_percent", 0.78)
@@ -449,13 +463,13 @@ def _build_blueprint():
         card_slot = ship_row.add_child_to_horizontal_box(card)
         _set_padding(card_slot, _margin(4, 0, 4, 0))
 
-    # Date and wind are image-only displays. Every glyph has a dark enlarged copy
-    # under the white face image, producing an outer-glow treatment without text.
+    # Date and wind are image-only displays. The transparent binding container
+    # keeps the glyphs directly over the sea with no rectangular panel behind them.
     status_panel = _border(
         tree,
         "DateWindPanel",
-        unreal.LinearColor(0.008, 0.014, 0.018, 0.38),
-        _margin(18, 10, 18, 10),
+        unreal.LinearColor(0.0, 0.0, 0.0, 0.0),
+        _margin(0, 0, 0, 0),
     )
     status_slot = root.add_child_to_canvas(status_panel)
     _configure_canvas_slot(
@@ -471,6 +485,9 @@ def _build_blueprint():
     # cooked viewport even though they remain visible in the Widget Designer.
     status_content = _construct(tree, unreal.CanvasPanel, "DateWindCanvas")
     _add(status_panel, status_content)
+    # Preserve each cropped source texture's natural aspect ratio at 34 px high.
+    # The former oversized widths stretched glyph faces horizontally and read as
+    # excessive tracking; the small inter-slot gap below supplies the separation.
     date_specs = (
         (
             "DateWeekday",
@@ -478,25 +495,25 @@ def _build_blueprint():
                 "/Game/UI/DateGlyphs/T_Date_Weekday_FRI",
                 "/Game/UI/DateGlyphs/T_Date_Weekday_Friday",
             ),
-            146,
+            48,
             34,
         ),
-        ("DatePunctuation", "/Game/UI/DateGlyphs/T_Date_Punctuation_Dot", 28, 34),
-        ("DateDayTens", "/Game/UI/DateGlyphs/T_Date_Digit_2", 30, 34),
-        ("DateDayOnes", "/Game/UI/DateGlyphs/T_Date_Digit_4", 30, 34),
+        ("DatePunctuation", "/Game/UI/DateGlyphs/T_Date_Punctuation_Dot", 34, 34),
+        ("DateDayTens", "/Game/UI/DateGlyphs/T_Date_Digit_2", 24, 34),
+        ("DateDayOnes", "/Game/UI/DateGlyphs/T_Date_Digit_4", 28, 34),
         (
             "DateMonth",
             (
                 "/Game/UI/DateGlyphs/T_Date_Month_JULY",
                 "/Game/UI/DateGlyphs/T_Date_Month_July",
             ),
-            108,
+            74,
             34,
         ),
-        ("DateYearThousands", "/Game/UI/DateGlyphs/T_Date_Digit_1", 28, 34),
-        ("DateYearHundreds", "/Game/UI/DateGlyphs/T_Date_Digit_7", 28, 34),
-        ("DateYearTens", "/Game/UI/DateGlyphs/T_Date_Digit_1", 28, 34),
-        ("DateYearOnes", "/Game/UI/DateGlyphs/T_Date_Digit_5", 28, 34),
+        ("DateYearThousands", "/Game/UI/DateGlyphs/T_Date_Digit_1", 18, 34),
+        ("DateYearHundreds", "/Game/UI/DateGlyphs/T_Date_Digit_7", 25, 34),
+        ("DateYearTens", "/Game/UI/DateGlyphs/T_Date_Digit_1", 18, 34),
+        ("DateYearOnes", "/Game/UI/DateGlyphs/T_Date_Digit_5", 25, 34),
     )
     date_x = 0.0
     for base_name, texture_path, width, height in date_specs:
@@ -509,13 +526,12 @@ def _build_blueprint():
             _margin(date_x, 0, width, height),
             z_order=2,
         )
-        date_x += width + 6.0
+        date_x += width + 2.0
 
     wind_specs = (
-        ("WindCompass", "/Game/UI/DateGlyphs/T_Wind_Compass", 42, 42),
         ("WindArrow", "/Game/UI/DateGlyphs/T_Wind_Arrow", 42, 42),
     )
-    wind_x = 202.0
+    wind_x = (date_x - 2.0 - 42.0) * 0.5
     for base_name, texture_path, width, height in wind_specs:
         glyph = _glyph_slot(tree, base_name, texture_path, width, height)
         glyph_slot = status_content.add_child_to_canvas(glyph)
@@ -557,7 +573,6 @@ def _build_blueprint():
             "DateYearHundreds",
             "DateYearTens",
             "DateYearOnes",
-            "WindCompass",
             "WindArrow",
         )
         for suffix in ("Glow", "Image")
@@ -586,56 +601,25 @@ def _build_title_blueprint():
     root = _construct(tree, unreal.CanvasPanel, "TitleScreenRoot")
     _set_root(tree, root)
 
-    veil = _border(tree, "OceanVeil", unreal.LinearColor(0.012, 0.025, 0.035, 0.92))
-    veil_slot = root.add_child_to_canvas(veil)
-    _configure_canvas_slot(
-        veil_slot,
-        _anchors(0.0, 0.0, 1.0, 1.0),
-        unreal.Vector2D(0.0, 0.0),
-        _margin(0, 0, 0, 0),
-        z_order=0,
-    )
-
-    # Multiple translucent brush layers make a soft, alpha-edged ornamental frame
-    # while remaining entirely editable in the WBP Designer.
-    panel_size = _size(tree, "TitlePanelSize", 900.0, 730.0)
+    # The title composition floats directly over the live ocean. TitlePanel is
+    # transparent and exists only as the native fade-animation binding root.
+    panel_size = _size(tree, "TitlePanelSize", 820.0, 690.0)
     panel_slot = root.add_child_to_canvas(panel_size)
     _configure_canvas_slot(
         panel_slot,
         _anchors(0.5, 0.5, 0.5, 0.5),
         unreal.Vector2D(0.5, 0.5),
-        _margin(0, 0, 900, 730),
+        _margin(0, 0, 820, 690),
         z_order=1,
     )
 
-    outer_glow = _border(
-        tree,
-        "TitlePanel",
-        unreal.LinearColor(0.64, 0.42, 0.12, 0.30),
-        _margin(7, 7, 7, 7),
-    )
-    _add(panel_size, outer_glow)
-    outer_line = _border(
-        tree,
-        "TitleOuterLine",
-        unreal.LinearColor(0.75, 0.52, 0.18, 0.78),
-        _margin(3, 3, 3, 3),
-    )
-    _add(outer_glow, outer_line)
-    inner_alpha = _border(
-        tree,
-        "TitleInnerAlphaFrame",
-        unreal.LinearColor(0.15, 0.09, 0.035, 0.72),
-        _margin(9, 9, 9, 9),
-    )
-    _add(outer_line, inner_alpha)
     title_panel = _border(
         tree,
-        "TitleContentPanel",
-        unreal.LinearColor(0.025, 0.027, 0.025, 0.94),
-        _margin(30, 24, 30, 24),
+        "TitlePanel",
+        unreal.LinearColor(0.0, 0.0, 0.0, 0.0),
+        _margin(18, 8, 18, 8),
     )
-    _add(inner_alpha, title_panel)
+    _add(panel_size, title_panel)
 
     content = _construct(tree, unreal.VerticalBox, "TitleContent")
     _add(title_panel, content)
@@ -651,44 +635,41 @@ def _build_title_blueprint():
     crest_slot = content.add_child_to_vertical_box(crest)
     _set_padding(crest_slot, _margin(0, 0, 0, 6))
 
-    title = _text(
-        tree,
-        "GameTitleText",
-        "AGE OF SAIL",
-        56,
-        unreal.LinearColor(0.94, 0.76, 0.35, 1.0),
-        3,
-    )
-    title_slot = content.add_child_to_vertical_box(title)
-    _set_padding(title_slot, _margin(0, 0, 0, 0))
-
-    subtitle = _text(
-        tree,
-        "GameSubtitleText",
-        "F L E E T   C O M M A N D",
-        19,
-        unreal.LinearColor(0.68, 0.56, 0.34, 1.0),
-        1,
-    )
-    subtitle_slot = content.add_child_to_vertical_box(subtitle)
-    _set_padding(subtitle_slot, _margin(0, 0, 0, 14))
-
     logo = _image(
         tree,
         "LogoImage",
         "/Game/UI/Title/T_AgeOfSail_Logo",
         unreal.LinearColor(1.0, 1.0, 1.0, 1.0),
     )
-    logo_size = _size(tree, "LogoImageSize", 650, 155)
+    logo_brush = logo.get_editor_property("brush")
+    _set(logo_brush, "draw_as", _enum(unreal.SlateBrushDrawType, "IMAGE"))
+    _set(logo_brush, "image_size", unreal.Vector2D(2172, 724))
+    _set(logo, "brush", logo_brush)
+    logo_size = _size(tree, "LogoImageSize", 700, 234)
+    # The source and authored box are both exactly 3:1, so a direct fill keeps
+    # the logo aspect while avoiding ScaleBox's zero desired-size edge case.
     _add(logo_size, logo)
     logo_slot = content.add_child_to_vertical_box(logo_size)
-    _set_padding(logo_slot, _margin(70, 0, 70, 12))
+    _set_padding(logo_slot, _margin(42, 0, 42, 10))
+
+    # Retain the former ScaleBox node as a collapsed authored compatibility node.
+    # UE keeps removed widget objects alive until GC; preserving the named node
+    # avoids stale variable diagnostics while the visible logo remains direct.
+    legacy_logo_scale = _construct(tree, unreal.ScaleBox, "LogoScaleBox")
+    legacy_logo_spacer = _construct(tree, unreal.Spacer, "LogoScaleCompatibilitySpacer")
+    _add(legacy_logo_scale, legacy_logo_spacer)
+    legacy_logo_slot = content.add_child_to_vertical_box(legacy_logo_scale)
+    _set(
+        legacy_logo_scale,
+        "visibility",
+        _enum(unreal.SlateVisibility, "COLLAPSED"),
+    )
 
     rule = _border(tree, "TitleGildedRule", unreal.LinearColor(0.70, 0.46, 0.13, 0.82))
     rule_size = _size(tree, "TitleGildedRuleSize", None, 2)
     _add(rule_size, rule)
     rule_slot = content.add_child_to_vertical_box(rule_size)
-    _set_padding(rule_slot, _margin(95, 0, 95, 18))
+    _set_padding(rule_slot, _margin(105, 0, 105, 16))
 
     description = _text(
         tree,
@@ -704,11 +685,11 @@ def _build_title_blueprint():
     _set(description, "auto_wrap_text", True)
     _set(description, "wrap_text_at", 710.0)
     description_slot = content.add_child_to_vertical_box(description)
-    _set_padding(description_slot, _margin(50, 6, 50, 16))
+    _set_padding(description_slot, _margin(50, 4, 50, 15))
 
     mode_row = _construct(tree, unreal.HorizontalBox, "GraphicModeRow")
     mode_row_slot = content.add_child_to_vertical_box(mode_row)
-    _set_padding(mode_row_slot, _margin(190, 0, 190, 18))
+    _set_padding(mode_row_slot, _margin(170, 0, 170, 14))
 
     mode_label = _text(
         tree,
@@ -774,31 +755,34 @@ def _build_title_blueprint():
     _set(item_style, "text_color", _slate_color(INK))
     _set(item_style, "selected_text_color", _slate_color(INK))
     _set(mode_combo, "item_style", item_style)
-    _add(combo_frame, mode_combo)
+    mode_overlay = _construct(tree, unreal.Overlay, "GraphicModeOverlay")
+    _add(combo_frame, mode_overlay)
+    mode_overlay.add_child_to_overlay(mode_combo)
+    mode_value = _text(
+        tree,
+        "GraphicModeValueText",
+        "3D",
+        17,
+        INK,
+        0,
+    )
+    mode_value_slot = mode_overlay.add_child_to_overlay(mode_value)
+    _set_padding(mode_value_slot, _margin(18, 8, 48, 8))
+    _set(
+        mode_value,
+        "visibility",
+        _enum(unreal.SlateVisibility, "HIT_TEST_INVISIBLE"),
+    )
 
     spacer = _construct(tree, unreal.Spacer, "TitleFlexibleSpacer")
     spacer_slot = content.add_child_to_vertical_box(spacer)
     _fill_vertical_slot(spacer_slot)
 
-    button_alpha = _border(
-        tree,
-        "DepartureButtonAlphaFrame",
-        unreal.LinearColor(0.73, 0.48, 0.13, 0.32),
-        _margin(5, 5, 5, 5),
-    )
-    button_alpha_slot = content.add_child_to_vertical_box(button_alpha)
-    _set_padding(button_alpha_slot, _margin(210, 12, 210, 12))
-
-    button_frame = _border(
-        tree,
-        "DepartureButtonFrame",
-        unreal.LinearColor(0.76, 0.53, 0.19, 0.90),
-        _margin(2, 2, 2, 2),
-    )
-    _add(button_alpha, button_frame)
-
+    departure_size = _size(tree, "DepartureButtonSize", 470, 157)
+    departure_size_slot = content.add_child_to_vertical_box(departure_size)
+    _set_padding(departure_size_slot, _margin(157, 6, 157, 5))
     departure_button = _construct(tree, unreal.Button, "DepartureButton")
-    _call(departure_button, "set_background_color", unreal.LinearColor(0.14, 0.055, 0.025, 0.96))
+    _call(departure_button, "set_background_color", unreal.LinearColor(1.0, 1.0, 1.0, 1.0))
     _call(departure_button, "set_color_and_opacity", unreal.LinearColor(1.0, 1.0, 1.0, 1.0))
     departure_texture = unreal.EditorAssetLibrary.load_asset(
         "/Game/UI/Title/T_DepartureButton"
@@ -809,14 +793,18 @@ def _build_title_blueprint():
             ("normal", unreal.LinearColor(1.0, 1.0, 1.0, 1.0)),
             ("hovered", unreal.LinearColor(1.12, 1.08, 0.92, 1.0)),
             ("pressed", unreal.LinearColor(0.78, 0.75, 0.68, 1.0)),
+            ("disabled", unreal.LinearColor(0.46, 0.46, 0.46, 0.72)),
         ):
             brush = button_style.get_editor_property(brush_name)
             _set(brush, "resource_object", departure_texture)
-            _set(brush, "image_size", unreal.Vector2D(420, 96))
+            _set(brush, "draw_as", _enum(unreal.SlateBrushDrawType, "IMAGE"))
+            _set(brush, "image_size", unreal.Vector2D(470, 157))
             _set(brush, "tint_color", _slate_color(tint))
             _set(button_style, brush_name, brush)
+        _set(button_style, "normal_padding", _margin(0, 0, 0, 0))
+        _set(button_style, "pressed_padding", _margin(0, 2, 0, 0))
         _set(departure_button, "widget_style", button_style)
-    _add(button_frame, departure_button)
+    _add(departure_size, departure_button)
 
     departure_label = _text(
         tree,
@@ -826,7 +814,7 @@ def _build_title_blueprint():
         unreal.LinearColor(0.96, 0.81, 0.43, 1.0),
         2,
     )
-    _set_padding(departure_label, _margin(18, 13, 18, 13))
+    _set_padding(departure_label, _margin(18, 45, 18, 42))
     _add(departure_button, departure_label)
 
     footer = _text(
@@ -838,7 +826,7 @@ def _build_title_blueprint():
         1,
     )
     footer_slot = content.add_child_to_vertical_box(footer)
-    _set_padding(footer_slot, _margin(0, 16, 0, 0))
+    _set_padding(footer_slot, _margin(0, 2, 0, 0))
 
     black_overlay = _border(
         tree, "FullscreenBlackOverlay", unreal.LinearColor(0.0, 0.0, 0.0, 1.0)
@@ -860,6 +848,8 @@ def _build_title_blueprint():
             "GraphicModeComboBox",
             "TitlePanel",
             "LogoImage",
+            "LogoScaleBox",
+            "GraphicModeValueText",
             "FullscreenBlackOverlay",
         )
         if not _find_widget(tree, name)

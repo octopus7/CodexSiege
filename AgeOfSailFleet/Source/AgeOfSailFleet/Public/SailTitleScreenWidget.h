@@ -8,6 +8,7 @@
 class UButton;
 class UBorder;
 class UComboBoxString;
+class UTextBlock;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFleetDepartureRequested);
 
@@ -52,6 +53,9 @@ protected:
 
     UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
     TObjectPtr<UComboBoxString> GraphicModeComboBox;
+
+    UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+    TObjectPtr<UTextBlock> GraphicModeValueText;
 
 private:
     enum class EDepartureTransition : uint8
