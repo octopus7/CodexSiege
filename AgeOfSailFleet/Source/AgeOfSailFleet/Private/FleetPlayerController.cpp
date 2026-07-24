@@ -2,6 +2,7 @@
 
 #include "EngineUtils.h"
 #include "FleetCameraPawn.h"
+#include "FleetMoveCommandMarker.h"
 #include "InputCoreTypes.h"
 #include "SailShip.h"
 
@@ -172,6 +173,7 @@ void AFleetPlayerController::IssueContextCommand()
         PlaneNormal);
 
     const int32 ColumnCount = FMath::CeilToInt(FMath::Sqrt(static_cast<float>(SelectedShips.Num())));
+    bool bIssuedMoveCommand = false;
     for (int32 Index = 0; Index < SelectedShips.Num(); ++Index)
     {
         ASailShip* Ship = SelectedShips[Index].Get();
@@ -186,6 +188,19 @@ void AFleetPlayerController::IssueContextCommand()
             (static_cast<float>(Column) - (ColumnCount - 1) * 0.5f) * 3400.0f,
             0.0f);
         Ship->SetMoveCommand(CommandPoint + FormationOffset);
+        bIssuedMoveCommand = true;
+    }
+
+    if (bIssuedMoveCommand)
+    {
+        FActorSpawnParameters SpawnParameters;
+        SpawnParameters.SpawnCollisionHandlingOverride =
+            ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        GetWorld()->SpawnActor<AFleetMoveCommandMarker>(
+            AFleetMoveCommandMarker::StaticClass(),
+            FVector(CommandPoint.X, CommandPoint.Y, 0.0f),
+            FRotator::ZeroRotator,
+            SpawnParameters);
     }
 }
 
