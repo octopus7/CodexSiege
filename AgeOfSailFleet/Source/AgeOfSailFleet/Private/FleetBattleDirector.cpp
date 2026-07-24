@@ -40,8 +40,10 @@ AFleetBattleDirector::AFleetBattleDirector()
 
     HeightFog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("HeightFog"));
     HeightFog->SetupAttachment(Root);
-    HeightFog->SetFogDensity(0.012f);
-    HeightFog->SetFogHeightFalloff(0.08f);
+    HeightFog->SetFogDensity(0.0015f);
+    HeightFog->SetFogHeightFalloff(0.03f);
+    HeightFog->SetFogMaxOpacity(0.55f);
+    HeightFog->SetStartDistance(10000.0f);
     HeightFog->SetFogInscatteringColor(FLinearColor(0.12f, 0.28f, 0.34f));
 }
 
@@ -123,7 +125,9 @@ void AFleetBattleDirector::StartBattle()
         Controller->SelectAllFriendlyShips();
         if (AFleetCameraPawn* CameraPawn = Cast<AFleetCameraPawn>(Controller->GetPawn()))
         {
-            CameraPawn->FocusLocation(FVector(-6800.0f, 0.0f, 0.0f));
+            // Open on the entire engagement instead of dropping the camera on
+            // one fleet. Players can zoom in after reading both formations.
+            CameraPawn->FocusLocation(FVector::ZeroVector);
         }
     }
     UE_LOG(LogAgeOfSail, Display, TEXT("Fleet battle started blue=3 red=4"));
@@ -147,16 +151,16 @@ void AFleetBattleDirector::SpawnFleet(const int32 Team)
 {
     if (Team == 0)
     {
-        SpawnShip(0, 0, FVector(-6200.0f, 0.0f, 0.0f), FRotator(0.0f, 8.0f, 0.0f), true);
-        SpawnShip(0, 1, FVector(-9800.0f, -3800.0f, 0.0f), FRotator(0.0f, 12.0f, 0.0f), false);
-        SpawnShip(0, 2, FVector(-9800.0f, 3800.0f, 0.0f), FRotator(0.0f, 3.0f, 0.0f), false);
+        SpawnShip(0, 0, FVector(-16000.0f, 0.0f, 0.0f), FRotator(0.0f, 8.0f, 0.0f), true);
+        SpawnShip(0, 1, FVector(-20500.0f, -6000.0f, 0.0f), FRotator(0.0f, 12.0f, 0.0f), false);
+        SpawnShip(0, 2, FVector(-20500.0f, 6000.0f, 0.0f), FRotator(0.0f, 3.0f, 0.0f), false);
     }
     else
     {
-        SpawnShip(1, 0, FVector(6200.0f, 0.0f, 0.0f), FRotator(0.0f, 185.0f, 0.0f), true);
-        SpawnShip(1, 1, FVector(9800.0f, -3800.0f, 0.0f), FRotator(0.0f, 190.0f, 0.0f), false);
-        SpawnShip(1, 2, FVector(9800.0f, 3800.0f, 0.0f), FRotator(0.0f, 179.0f, 0.0f), false);
-        SpawnShip(1, 3, FVector(12500.0f, 0.0f, 0.0f), FRotator(0.0f, 184.0f, 0.0f), false);
+        SpawnShip(1, 0, FVector(16000.0f, 0.0f, 0.0f), FRotator(0.0f, 185.0f, 0.0f), true);
+        SpawnShip(1, 1, FVector(20500.0f, -6000.0f, 0.0f), FRotator(0.0f, 190.0f, 0.0f), false);
+        SpawnShip(1, 2, FVector(20500.0f, 6000.0f, 0.0f), FRotator(0.0f, 179.0f, 0.0f), false);
+        SpawnShip(1, 3, FVector(25500.0f, 0.0f, 0.0f), FRotator(0.0f, 184.0f, 0.0f), false);
     }
 }
 
@@ -178,6 +182,7 @@ ASailShip* AFleetBattleDirector::SpawnShip(
                 ? (bFlagship ? FLinearColor(0.92f, 0.62f, 0.08f) : FLinearColor(0.05f, 0.22f, 0.68f))
                 : (bFlagship ? FLinearColor(0.95f, 0.68f, 0.12f) : FLinearColor(0.68f, 0.035f, 0.018f));
         Ship->ConfigureShip(Team, bFlagship, Trim, FleetIndex);
+        Ship->SetGraphicsMode(GraphicsMode);
         UGameplayStatics::FinishSpawningActor(Ship, SpawnTransform);
         FleetShips.Add(Ship);
     }

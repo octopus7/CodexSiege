@@ -8,8 +8,8 @@ class UBorder;
 class UHorizontalBox;
 class UImage;
 class UProgressBar;
-class UTextBlock;
 class UTexture2D;
+class UTextBlock;
 
 UENUM(BlueprintType)
 enum class ESailFleetFaction : uint8
@@ -98,18 +98,12 @@ protected:
     UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
     TObjectPtr<UHorizontalBox> ShipCardRow;
 
-    UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
-    TObjectPtr<UTextBlock> SelectionCountText;
-
-    UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
-    TObjectPtr<UTextBlock> NoSelectionText;
-
 private:
     struct FBoundShipCard
     {
         UBorder* Container = nullptr;
-        UBorder* FactionFrame = nullptr;
-        UBorder* RankBand = nullptr;
+        UImage* FactionGlow = nullptr;
+        UImage* LocketFrame = nullptr;
         UImage* Portrait = nullptr;
         UTextBlock* CaptainName = nullptr;
         UTextBlock* ShipName = nullptr;
@@ -125,6 +119,15 @@ private:
 
     UPROPERTY(Transient)
     TArray<FSailShipHUDEntry> CurrentShips;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UTexture2D> BronzeLocketTexture;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UTexture2D> SilverLocketTexture;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UTexture2D> GoldLocketTexture;
 
     void BindExistingCardWidgets();
     void BindExistingGlyphWidgets();

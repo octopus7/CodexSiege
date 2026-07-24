@@ -21,6 +21,12 @@ Open `AgeOfSailFleet.uproject`, press Play, then choose **DEPART WITH THE FLEET*
 on the title screen. You command three blue-and-gold ships against a four-ship
 red fleet.
 
+The title screen's **GRAPHIC MODE** dropdown selects either the authored **3D**
+ships or the ImageGen-painted **2D** presentation. In 2D mode, each ship uses
+eight camera-relative directional sprites while retaining the same fleet AI,
+movement, collision, combat, and sinking simulation.
+Automated runs can force the same mode with `-Graphics2D`.
+
 The runtime includes wind-aware sailing, formation commands, autonomous
 broadside combat, ship-rate-specific guns and health, procedural ocean waves,
 foam wakes, sinking, and flipbook cannon/hull/water effects.
@@ -32,5 +38,6 @@ foam wakes, sinking, and flipbook cannon/hull/water effects.
 - `Content/Raw/Textures`: ImageGen sail and timber source textures
 - `Content/Raw/UI`: ImageGen captain, title, date, and wind source art
 - `Content/Raw/FX`: ImageGen 4x4 combat flipbook sheets
+- `Content/Raw/Sprites/Ships`: ImageGen 8-direction blue/red ship sprite atlases
 
 Blender preview lights and cameras are not exported to Unreal.

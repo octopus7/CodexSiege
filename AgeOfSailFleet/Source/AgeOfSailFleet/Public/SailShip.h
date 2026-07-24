@@ -2,8 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "SailGraphicsMode.h"
 #include "SailShip.generated.h"
 
+class UBillboardComponent;
 class UBoxComponent;
 class UCameraComponent;
 class UMaterialInstanceDynamic;
@@ -12,6 +14,7 @@ class USceneComponent;
 class USpringArmComponent;
 class UStaticMesh;
 class UStaticMeshComponent;
+class UTexture2D;
 class AShipWakeActor;
 
 UCLASS()
@@ -36,6 +39,7 @@ public:
     void SetMoveCommand(const FVector& Destination);
     void SetAttackTarget(ASailShip* Target);
     void SetSelected(bool bInSelected);
+    void SetGraphicsMode(ESailGraphicsMode InGraphicsMode);
 
     bool IsAfloat() const { return Health > 0.0f; }
     int32 GetTeam() const { return Team; }
@@ -61,6 +65,9 @@ private:
 
     UPROPERTY(VisibleAnywhere)
     TObjectPtr<UProceduralMeshComponent> HullMesh;
+
+    UPROPERTY(VisibleAnywhere)
+    TObjectPtr<UBillboardComponent> ShipSprite;
 
     UPROPERTY(VisibleAnywhere)
     TObjectPtr<USpringArmComponent> SpringArm;
@@ -96,6 +103,9 @@ private:
     TObjectPtr<UStaticMesh> SphereMesh;
 
     UPROPERTY()
+    TArray<TObjectPtr<UTexture2D>> DirectionalSprites;
+
+    UPROPERTY()
     TWeakObjectPtr<AShipWakeActor> WakeActor;
 
     int32 Team = 0;
@@ -104,6 +114,8 @@ private:
     bool bSinking = false;
     bool bSelected = false;
     bool bHasMoveCommand = false;
+    ESailGraphicsMode GraphicsMode = ESailGraphicsMode::ThreeDimensional;
+    int32 ActiveSpriteDirection = INDEX_NONE;
     float MaxHealth = 1200.0f;
     float Health = 1200.0f;
     float SailSetting = 0.65f;
@@ -130,6 +142,8 @@ private:
     static constexpr float ReloadDuration = 7.5f;
 
     void BuildVisuals();
+    void Build2DSpriteVisuals();
+    void Update2DSprite();
     void BuildHull();
     void BuildDeckAndRailings();
     void BuildGunDeck();

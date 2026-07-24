@@ -5,6 +5,14 @@
 #include "Components/SceneComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 
+namespace FleetCameraTuning
+{
+    constexpr float MinArmLength = 4200.0f;
+    constexpr float MaxArmLength = 46000.0f;
+    constexpr float WorldHalfExtent = 34000.0f;
+    constexpr float ZoomStep = 1800.0f;
+}
+
 AFleetCameraPawn::AFleetCameraPawn()
 {
     PrimaryActorTick.bCanEverTick = true;
@@ -15,12 +23,15 @@ AFleetCameraPawn::AFleetCameraPawn()
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(Root);
     SpringArm->TargetArmLength = TargetArmLength;
-    SpringArm->SetRelativeRotation(FRotator(-58.0f, -45.0f, 0.0f));
+    // The fleets deploy primarily along world X. Looking across that axis keeps
+    // both battle lines horizontal in a widescreen viewport instead of pushing
+    // the opposing corners off-screen.
+    SpringArm->SetRelativeRotation(FRotator(-70.0f, -90.0f, 0.0f));
     SpringArm->bDoCollisionTest = false;
 
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
-    Camera->FieldOfView = 55.0f;
+    Camera->FieldOfView = 60.0f;
 }
 
 void AFleetCameraPawn::Tick(const float DeltaSeconds)
@@ -30,17 +41,30 @@ void AFleetCameraPawn::Tick(const float DeltaSeconds)
     const FRotator FlatRotation(0.0f, SpringArm->GetComponentRotation().Yaw, 0.0f);
     const FVector Forward = FlatRotation.RotateVector(FVector::ForwardVector);
     const FVector Right = FlatRotation.RotateVector(FVector::RightVector);
-    const float MoveSpeed = FMath::Lerp(1700.0f, 5200.0f, (TargetArmLength - 2600.0f) / 7800.0f);
+    const float ZoomAlpha = FMath::GetRangePct(
+        FleetCameraTuning::MinArmLength,
+        FleetCameraTuning::MaxArmLength,
+        TargetArmLength);
+    const float MoveSpeed = FMath::Lerp(2200.0f, 12000.0f, ZoomAlpha);
     FVector Location = GetActorLocation() +
         (Forward * ForwardInput + Right * RightInput).GetClampedToMaxSize(1.0f) *
         MoveSpeed *
         DeltaSeconds;
-    Location.X = FMath::Clamp(Location.X, -13500.0f, 13500.0f);
-    Location.Y = FMath::Clamp(Location.Y, -13500.0f, 13500.0f);
+    Location.X = FMath::Clamp(
+        Location.X,
+        -FleetCameraTuning::WorldHalfExtent,
+        FleetCameraTuning::WorldHalfExtent);
+    Location.Y = FMath::Clamp(
+        Location.Y,
+        -FleetCameraTuning::WorldHalfExtent,
+        FleetCameraTuning::WorldHalfExtent);
     Location.Z = 0.0f;
     SetActorLocation(Location);
 
-    TargetArmLength = FMath::Clamp(TargetArmLength - ZoomInput * 900.0f, 2600.0f, 10400.0f);
+    TargetArmLength = FMath::Clamp(
+        TargetArmLength - ZoomInput * FleetCameraTuning::ZoomStep,
+        FleetCameraTuning::MinArmLength,
+        FleetCameraTuning::MaxArmLength);
     SpringArm->TargetArmLength = FMath::FInterpTo(
         SpringArm->TargetArmLength,
         TargetArmLength,
@@ -59,7 +83,16 @@ void AFleetCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 void AFleetCameraPawn::FocusLocation(const FVector& WorldLocation)
 {
-    SetActorLocation(FVector(WorldLocation.X, WorldLocation.Y, 0.0f));
+    SetActorLocation(FVector(
+        FMath::Clamp(
+            WorldLocation.X,
+            -FleetCameraTuning::WorldHalfExtent,
+            FleetCameraTuning::WorldHalfExtent),
+        FMath::Clamp(
+            WorldLocation.Y,
+            -FleetCameraTuning::WorldHalfExtent,
+            FleetCameraTuning::WorldHalfExtent),
+        0.0f));
 }
 
 void AFleetCameraPawn::MoveForward(const float Value)

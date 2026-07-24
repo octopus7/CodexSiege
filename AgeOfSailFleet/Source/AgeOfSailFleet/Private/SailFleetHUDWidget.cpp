@@ -5,27 +5,32 @@
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+#include "Engine/Texture2D.h"
 
 namespace SailFleetHUD
 {
-    const FLinearColor BlueFrame(0.055f, 0.20f, 0.58f, 1.0f);
-    const FLinearColor RedFrame(0.60f, 0.055f, 0.045f, 1.0f);
-    const FLinearColor BronzeRank(0.43f, 0.22f, 0.07f, 1.0f);
-    const FLinearColor SilverRank(0.43f, 0.48f, 0.52f, 1.0f);
-    const FLinearColor GoldRank(0.70f, 0.45f, 0.08f, 1.0f);
     const FLinearColor HealthyBar(0.12f, 0.46f, 0.23f, 1.0f);
     const FLinearColor DamagedBar(0.67f, 0.13f, 0.06f, 1.0f);
 }
 
 bool USailFleetHUDWidget::FBoundShipCard::IsComplete() const
 {
-    return Container && FactionFrame && RankBand && Portrait && CaptainName
+    return Container && FactionGlow && LocketFrame && Portrait && CaptainName
         && ShipName && ShipClass && RankText && HealthBar;
 }
 
 void USailFleetHUDWidget::NativeOnInitialized()
 {
     Super::NativeOnInitialized();
+    BronzeLocketTexture = LoadObject<UTexture2D>(
+        nullptr,
+        TEXT("/Game/UI/Lockets/T_Locket_Bronze.T_Locket_Bronze"));
+    SilverLocketTexture = LoadObject<UTexture2D>(
+        nullptr,
+        TEXT("/Game/UI/Lockets/T_Locket_Silver.T_Locket_Silver"));
+    GoldLocketTexture = LoadObject<UTexture2D>(
+        nullptr,
+        TEXT("/Game/UI/Lockets/T_Locket_Gold.T_Locket_Gold"));
     BindExistingCardWidgets();
     BindExistingGlyphWidgets();
     RefreshPresentation();
@@ -154,8 +159,8 @@ void USailFleetHUDWidget::BindExistingCardWidgets()
         };
         FBoundShipCard Card;
         Card.Container = Cast<UBorder>(GetWidgetFromName(WidgetName(TEXT("CardContainer"))));
-        Card.FactionFrame = Cast<UBorder>(GetWidgetFromName(WidgetName(TEXT("FactionFrame"))));
-        Card.RankBand = Cast<UBorder>(GetWidgetFromName(WidgetName(TEXT("RankBand"))));
+        Card.FactionGlow = Cast<UImage>(GetWidgetFromName(WidgetName(TEXT("FactionGlow"))));
+        Card.LocketFrame = Cast<UImage>(GetWidgetFromName(WidgetName(TEXT("LocketFrame"))));
         Card.Portrait = Cast<UImage>(GetWidgetFromName(WidgetName(TEXT("Portrait"))));
         Card.CaptainName = Cast<UTextBlock>(GetWidgetFromName(WidgetName(TEXT("CaptainName"))));
         Card.ShipName = Cast<UTextBlock>(GetWidgetFromName(WidgetName(TEXT("ShipName"))));
@@ -231,20 +236,6 @@ void USailFleetHUDWidget::ApplyGlyphTexture(FName SlotName, UTexture2D* Texture)
 
 void USailFleetHUDWidget::RefreshPresentation()
 {
-    if (SelectionCountText)
-    {
-        SelectionCountText->SetText(FText::Format(
-            NSLOCTEXT("SailFleetHUD", "SelectedShipCount", "FLEET SELECTED  {0} / {1}"),
-            FText::AsNumber(CurrentShips.Num()),
-            FText::AsNumber(MaxVisibleShipCards)));
-    }
-
-    if (NoSelectionText)
-    {
-        NoSelectionText->SetVisibility(
-            CurrentShips.IsEmpty() ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-    }
-
     for (int32 CardIndex = 0; CardIndex < BoundCards.Num(); ++CardIndex)
     {
         FBoundShipCard& Card = BoundCards[CardIndex];
@@ -266,18 +257,31 @@ void USailFleetHUDWidget::RefreshPresentation()
 void USailFleetHUDWidget::ApplyShipToCard(const FSailShipHUDEntry& Ship, FBoundShipCard& Card)
 {
     const bool bBlueFleet = Ship.Faction == ESailFleetFaction::BlueFleet;
-    Card.FactionFrame->SetBrushColor(bBlueFleet ? SailFleetHUD::BlueFrame : SailFleetHUD::RedFrame);
 
     const int32 Rank = FMath::Clamp(Ship.ShipRank, 1, 3);
-    const FLinearColor RankColor =
-        Rank == 3 ? SailFleetHUD::GoldRank :
-        Rank == 2 ? SailFleetHUD::SilverRank :
-                    SailFleetHUD::BronzeRank;
-    Card.RankBand->SetBrushColor(RankColor);
+    UTexture2D* LocketTexture =
+        Rank == 3 ? GoldLocketTexture.Get() :
+        Rank == 2 ? SilverLocketTexture.Get() :
+                    BronzeLocketTexture.Get();
+    if (LocketTexture)
+    {
+        Card.FactionGlow->SetBrushFromTexture(LocketTexture, true);
+        Card.LocketFrame->SetBrushFromTexture(LocketTexture, true);
+    }
+    const FVector2D LocketRenderSize(166.0f, 170.0f);
+    Card.FactionGlow->SetDesiredSizeOverride(LocketRenderSize);
+    Card.LocketFrame->SetDesiredSizeOverride(LocketRenderSize);
+    Card.Portrait->SetDesiredSizeOverride(LocketRenderSize);
+    const FLinearColor FactionGlowColor =
+        bBlueFleet
+            ? FLinearColor(0.025f, 0.20f, 1.0f, 0.68f)
+            : FLinearColor(1.0f, 0.025f, 0.012f, 0.68f);
+    Card.FactionGlow->SetColorAndOpacity(FactionGlowColor);
+    Card.LocketFrame->SetColorAndOpacity(FLinearColor::White);
     Card.RankText->SetText(
-        Rank == 3 ? NSLOCTEXT("SailFleetHUD", "RankThree", "III  SHIP OF THE LINE  III") :
-        Rank == 2 ? NSLOCTEXT("SailFleetHUD", "RankTwo", "II  FRIGATE  II") :
-                    NSLOCTEXT("SailFleetHUD", "RankOne", "I  SLOOP  I"));
+        Rank == 3 ? NSLOCTEXT("SailFleetHUD", "RankThree", "III  ADMIRAL FLAGSHIP") :
+        Rank == 2 ? NSLOCTEXT("SailFleetHUD", "RankTwo", "II  SENIOR CAPTAIN") :
+                    NSLOCTEXT("SailFleetHUD", "RankOne", "I  SHIP CAPTAIN"));
 
     Card.CaptainName->SetText(Ship.CaptainName);
     Card.ShipName->SetText(Ship.ShipName);

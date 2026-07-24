@@ -420,17 +420,43 @@ def main():
     make_wake_material()
     make_ocean_material(ocean_normal)
 
+    ship_sprite_dir = RAW / "Sprites" / "Ships"
+    for faction in ("Blue", "Red"):
+        for direction in ("N", "NE", "E", "SE", "S", "SW", "W", "NW"):
+            texture = import_texture(
+                ship_sprite_dir / f"Ship_{faction}_{direction}.png",
+                f"T_Ship_{faction}_{direction}",
+                "/Game/Art/Sprites/Ships",
+            )
+            if texture:
+                try:
+                    texture.set_editor_property(
+                        "lod_group",
+                        unreal.TextureGroup.TEXTUREGROUP_PIXELS2D,
+                    )
+                except Exception:
+                    pass
+                unreal.EditorAssetLibrary.save_loaded_asset(texture)
+
     glyph_dir = RAW / "UI" / "DateGlyphs"
     for source in sorted(glyph_dir.glob("*.png")):
         if "_Source" in source.stem or "Atlas" in source.stem:
             continue
         import_texture(source, f"T_Date_{source.stem}", "/Game/UI/DateGlyphs")
 
-    captain_dir = RAW / "UI" / "Captains"
+    captain_dir = RAW / "UI" / "CaptainsMasked"
     for source in sorted(captain_dir.glob("*.png")):
         if "_Source" in source.stem:
             continue
         import_texture(source, f"T_Captain_{source.stem}", "/Game/UI/Captains")
+
+    locket_dir = RAW / "UI" / "Lockets" / "Final"
+    for tier in ("Bronze", "Silver", "Gold"):
+        import_texture(
+            locket_dir / f"Locket_{tier}.png",
+            f"T_Locket_{tier}",
+            "/Game/UI/Lockets",
+        )
 
     import_texture(
         RAW / "UI" / "Title" / "DepartureButton.png",
@@ -473,4 +499,5 @@ def main():
     unreal.log("Age of Sail generated art import complete.")
 
 
-main()
+if __name__ == "__main__":
+    main()

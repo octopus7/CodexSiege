@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "SailGraphicsMode.h"
 #include "FleetBattleDirector.generated.h"
 
 class ASailShip;
@@ -32,6 +33,12 @@ public:
 
     UFUNCTION(BlueprintCallable)
     void StartBattle();
+
+    UFUNCTION(BlueprintCallable)
+    void SetGraphicsMode(ESailGraphicsMode InGraphicsMode)
+    {
+        GraphicsMode = InGraphicsMode;
+    }
 
     EFleetBattleState GetBattleState() const { return BattleState; }
     int32 CountAfloat(int32 Team) const;
@@ -66,6 +73,7 @@ private:
     float OutcomeCheckTime = 0.0f;
     float WindHeadingDegrees = 35.0f;
     float WindStrength = 0.82f;
+    ESailGraphicsMode GraphicsMode = ESailGraphicsMode::ThreeDimensional;
 
     void SpawnFleet(int32 Team);
     ASailShip* SpawnShip(

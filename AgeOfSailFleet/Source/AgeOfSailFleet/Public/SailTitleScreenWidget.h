@@ -2,10 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "SailGraphicsMode.h"
 #include "SailTitleScreenWidget.generated.h"
 
 class UButton;
 class UBorder;
+class UComboBoxString;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFleetDepartureRequested);
 
@@ -29,6 +31,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Title Screen")
     void ResetTitleTransition();
 
+    UFUNCTION(BlueprintPure, Category = "Title Screen")
+    ESailGraphicsMode GetSelectedGraphicsMode() const { return SelectedGraphicsMode; }
+
 protected:
     virtual void NativeOnInitialized() override;
     /** Delegate binding only; this function never constructs the widget tree. */
@@ -45,6 +50,9 @@ protected:
     UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
     TObjectPtr<UBorder> FullscreenBlackOverlay;
 
+    UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+    TObjectPtr<UComboBoxString> GraphicModeComboBox;
+
 private:
     enum class EDepartureTransition : uint8
     {
@@ -58,7 +66,11 @@ private:
     UFUNCTION()
     void HandleDepartureClicked();
 
+    UFUNCTION()
+    void HandleGraphicModeChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
+
     EDepartureTransition TransitionState = EDepartureTransition::Idle;
+    ESailGraphicsMode SelectedGraphicsMode = ESailGraphicsMode::ThreeDimensional;
     float TransitionTime = 0.0f;
     bool bDepartureBroadcast = false;
 };

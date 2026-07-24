@@ -2,6 +2,7 @@
 
 #include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/ComboBoxString.h"
 
 namespace SailTitleTransition
 {
@@ -25,6 +26,18 @@ void USailTitleScreenWidget::NativeConstruct()
         DepartureButton->OnClicked.AddUniqueDynamic(
             this, &USailTitleScreenWidget::HandleDepartureClicked);
     }
+    if (GraphicModeComboBox)
+    {
+        GraphicModeComboBox->ClearOptions();
+        GraphicModeComboBox->AddOption(TEXT("3D"));
+        GraphicModeComboBox->AddOption(TEXT("2D"));
+        GraphicModeComboBox->SetSelectedOption(
+            SelectedGraphicsMode == ESailGraphicsMode::TwoDimensional
+                ? TEXT("2D")
+                : TEXT("3D"));
+        GraphicModeComboBox->OnSelectionChanged.AddUniqueDynamic(
+            this, &USailTitleScreenWidget::HandleGraphicModeChanged);
+    }
 }
 
 void USailTitleScreenWidget::NativeDestruct()
@@ -33,6 +46,11 @@ void USailTitleScreenWidget::NativeDestruct()
     {
         DepartureButton->OnClicked.RemoveDynamic(
             this, &USailTitleScreenWidget::HandleDepartureClicked);
+    }
+    if (GraphicModeComboBox)
+    {
+        GraphicModeComboBox->OnSelectionChanged.RemoveDynamic(
+            this, &USailTitleScreenWidget::HandleGraphicModeChanged);
     }
 
     Super::NativeDestruct();
@@ -63,6 +81,17 @@ void USailTitleScreenWidget::ResetTitleTransition()
         FullscreenBlackOverlay->SetRenderOpacity(0.0f);
         FullscreenBlackOverlay->SetVisibility(ESlateVisibility::HitTestInvisible);
     }
+}
+
+void USailTitleScreenWidget::HandleGraphicModeChanged(
+    const FString SelectedItem,
+    ESelectInfo::Type SelectionType)
+{
+    (void)SelectionType;
+    SelectedGraphicsMode =
+        SelectedItem.Equals(TEXT("2D"), ESearchCase::IgnoreCase)
+            ? ESailGraphicsMode::TwoDimensional
+            : ESailGraphicsMode::ThreeDimensional;
 }
 
 void USailTitleScreenWidget::HandleDepartureClicked()

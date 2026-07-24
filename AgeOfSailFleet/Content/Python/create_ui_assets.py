@@ -219,6 +219,7 @@ def _glyph_slot(tree, base_name, texture_path, width, height):
     glow_transform = unreal.WidgetTransform()
     _set(glow_transform, "scale", unreal.Vector2D(1.08, 1.08))
     _set(glow, "render_transform", glow_transform)
+    _call(glow, "set_desired_size_override", unreal.Vector2D(width, height))
     overlay.add_child_to_overlay(glow)
     main = _image(
         tree,
@@ -226,6 +227,7 @@ def _glyph_slot(tree, base_name, texture_path, width, height):
         texture_path,
         unreal.LinearColor(1.0, 1.0, 1.0, 1.0),
     )
+    _call(main, "set_desired_size_override", unreal.Vector2D(width, height))
     overlay.add_child_to_overlay(main)
     return size
 
@@ -247,104 +249,79 @@ def _fill_vertical_slot(slot, padding=None):
         _set(slot, "size", unreal.SlateChildSize(value=1.0, size_rule=fill))
 
 
-def _build_stepped_gradient(tree, name):
-    """Six authored bands give the cards an inexpensive top-to-bottom gradient."""
-    gradient = _construct(tree, unreal.VerticalBox, name)
-    top = (0.13, 0.105, 0.072)
-    bottom = (0.025, 0.020, 0.016)
-    for band_index in range(6):
-        alpha = band_index / 5.0
-        color = unreal.LinearColor(
-            top[0] + (bottom[0] - top[0]) * alpha,
-            top[1] + (bottom[1] - top[1]) * alpha,
-            top[2] + (bottom[2] - top[2]) * alpha,
-            0.98,
-        )
-        band = _border(tree, "{}_Band{}".format(name, band_index + 1), color)
-        slot = gradient.add_child_to_vertical_box(band)
-        _fill_vertical_slot(slot)
-    return gradient
-
-
 def _build_card(tree, card_number):
     suffix = "{:02d}".format(card_number)
-    size_box = _size(tree, "CardSize{}".format(suffix), 202.0, 232.0)
+    size_box = _size(tree, "CardSize{}".format(suffix), 178.0, 226.0)
 
-    # CardContainer is the visibility root bound by native code.
+    # CardContainer is only the native visibility root. Its brush is fully
+    # transparent: there is deliberately no rectangular card or panel.
     container = _border(
         tree,
         "CardContainer{}".format(suffix),
-        unreal.LinearColor(0.01, 0.01, 0.01, 0.96),
-        _margin(3, 3, 3, 3),
+        unreal.LinearColor(0.0, 0.0, 0.0, 0.0),
     )
     _add(size_box, container)
 
-    # FactionFrame is recolored red/blue by the native presentation binding.
-    faction_frame = _border(
-        tree,
-        "FactionFrame{}".format(suffix),
-        BLUE if card_number % 2 else RED,
-        _margin(3, 3, 3, 3),
-    )
-    _add(container, faction_frame)
-
-    overlay = _construct(tree, unreal.Overlay, "CardOverlay{}".format(suffix))
-    _add(faction_frame, overlay)
-    overlay.add_child_to_overlay(_build_stepped_gradient(tree, "CardGradient{}".format(suffix)))
-
     content = _construct(tree, unreal.VerticalBox, "CardContent{}".format(suffix))
-    content_slot = overlay.add_child_to_overlay(content)
-    _set_padding(content_slot, _margin(6, 5, 6, 5))
+    _add(container, content)
 
-    rank_band = _border(
-        tree,
-        "RankBand{}".format(suffix),
-        DARK_GOLD,
-        _margin(2, 1, 2, 1),
-    )
-    rank_slot = content.add_child_to_vertical_box(rank_band)
-    _set_padding(rank_slot, _margin(0, 0, 0, 4))
-    rank_text = _text(
-        tree,
-        "RankText{}".format(suffix),
-        "III  SHIP OF THE LINE  III",
-        10,
-        GOLD,
-        1,
-    )
-    _add(rank_band, rank_text)
+    portrait_size = _size(tree, "PortraitSize{}".format(suffix), 166.0, 170.0)
+    portrait_slot = content.add_child_to_vertical_box(portrait_size)
+    _set_padding(portrait_slot, _margin(6, 0, 6, 0))
+    center = _enum(unreal.HorizontalAlignment, "H_ALIGN_CENTER", "CENTER")
+    if center is not None:
+        _set(portrait_slot, "horizontal_alignment", center)
 
-    portrait_frame = _border(
-        tree,
-        "PortraitFrame{}".format(suffix),
-        unreal.LinearColor(0.34, 0.25, 0.11, 1.0),
-        _margin(2, 2, 2, 2),
-    )
-    portrait_frame_slot = content.add_child_to_vertical_box(portrait_frame)
-    _set_padding(portrait_frame_slot, _margin(5, 0, 5, 4))
+    portrait_overlay = _construct(tree, unreal.Overlay, "PortraitOverlay{}".format(suffix))
+    _add(portrait_size, portrait_overlay)
 
-    portrait_size = _size(tree, "PortraitSize{}".format(suffix), None, 118.0)
-    _add(portrait_frame, portrait_size)
-    portrait = _construct(tree, unreal.Image, "Portrait{}".format(suffix))
-    _call(portrait, "set_color_and_opacity", unreal.LinearColor(0.16, 0.14, 0.11, 1.0))
-    _add(portrait_size, portrait)
+    # The glow uses the same alpha silhouette as the chosen rank locket, so
+    # faction color never creates a rectangular backing plate.
+    faction_glow = _image(
+        tree,
+        "FactionGlow{}".format(suffix),
+        "/Game/UI/Lockets/T_Locket_Gold",
+        BLUE if card_number % 2 else RED,
+    )
+    glow_transform = unreal.WidgetTransform()
+    _set(glow_transform, "scale", unreal.Vector2D(1.045, 1.045))
+    _set(glow_transform, "translation", unreal.Vector2D(-3.7, -3.7))
+    _set(faction_glow, "render_transform", glow_transform)
+    _call(faction_glow, "set_render_opacity", 0.58)
+    portrait_overlay.add_child_to_overlay(faction_glow)
+
+    portrait = _image(
+        tree,
+        "Portrait{}".format(suffix),
+        "/Game/UI/Captains/T_Captain_Blue_Admiral_Ward_Oval",
+        unreal.LinearColor(1.0, 1.0, 1.0, 1.0),
+    )
+    portrait_overlay.add_child_to_overlay(portrait)
+
+    locket_frame = _image(
+        tree,
+        "LocketFrame{}".format(suffix),
+        "/Game/UI/Lockets/T_Locket_Gold",
+        unreal.LinearColor(1.0, 1.0, 1.0, 1.0),
+    )
+    portrait_overlay.add_child_to_overlay(locket_frame)
 
     captain_name = _text(
         tree,
         "CaptainName{}".format(suffix),
         "CAPT. E. HARCOURT",
-        14,
+        12,
         unreal.LinearColor(0.95, 0.83, 0.55, 1.0),
         1,
     )
     captain_slot = content.add_child_to_vertical_box(captain_name)
-    _set_padding(captain_slot, _margin(2, 0, 2, 0))
+    _set_padding(captain_slot, _margin(1, -3, 1, 0))
 
     ship_name = _text(
         tree,
         "ShipName{}".format(suffix),
         "HMS RESOLUTE",
-        11,
+        10,
         unreal.LinearColor(0.76, 0.71, 0.60, 1.0),
         1,
     )
@@ -355,18 +332,29 @@ def _build_card(tree, card_number):
         tree,
         "ShipClass{}".format(suffix),
         "FIRST-RATE | 100 GUNS",
-        9,
+        8,
         unreal.LinearColor(0.63, 0.56, 0.42, 1.0),
         1,
     )
     ship_class_slot = content.add_child_to_vertical_box(ship_class)
-    _set_padding(ship_class_slot, _margin(2, 0, 2, 2))
+    _set_padding(ship_class_slot, _margin(2, 0, 2, 0))
+
+    rank_text = _text(
+        tree,
+        "RankText{}".format(suffix),
+        "III  FLAGSHIP",
+        8,
+        GOLD,
+        1,
+    )
+    rank_slot = content.add_child_to_vertical_box(rank_text)
+    _set_padding(rank_slot, _margin(2, 0, 2, 0))
 
     health = _construct(tree, unreal.ProgressBar, "HealthBar{}".format(suffix))
     _call(health, "set_percent", 0.78)
     _call(health, "set_fill_color_and_opacity", unreal.LinearColor(0.12, 0.46, 0.23, 1.0))
     health_slot = content.add_child_to_vertical_box(health)
-    _set_padding(health_slot, _margin(7, 1, 7, 2))
+    _set_padding(health_slot, _margin(24, 1, 24, 0))
 
     return size_box
 
@@ -418,59 +406,17 @@ def _build_blueprint():
     root = _construct(tree, unreal.CanvasPanel, "FleetHUDRoot")
     _set_root(tree, root)
 
-    shadow = _border(tree, "BottomPanelShadow", unreal.LinearColor(0.0, 0.0, 0.0, 0.72))
-    shadow_slot = root.add_child_to_canvas(shadow)
+    # The selected fleet sits directly over the world. There is intentionally no
+    # bottom panel, shadow rectangle, header, or selection-count text.
+    row_scale = _construct(tree, unreal.ScaleBox, "ShipCardScale")
+    scale_slot = root.add_child_to_canvas(row_scale)
     _configure_canvas_slot(
-        shadow_slot,
-        _anchors(0.02, 1.0, 0.98, 1.0),
-        unreal.Vector2D(0.0, 1.0),
-        _margin(0, -8, 0, 318),
-        z_order=0,
-    )
-
-    panel = _border(tree, "BottomCommandPanel", PANEL, _margin(9, 7, 9, 7))
-    panel_slot = root.add_child_to_canvas(panel)
-    _configure_canvas_slot(
-        panel_slot,
-        _anchors(0.025, 1.0, 0.975, 1.0),
-        unreal.Vector2D(0.0, 1.0),
-        _margin(0, -8, 0, 310),
+        scale_slot,
+        _anchors(0.5, 1.0, 0.5, 1.0),
+        unreal.Vector2D(0.5, 1.0),
+        _margin(0, -10, 1495, 232),
         z_order=1,
     )
-
-    panel_content = _construct(tree, unreal.VerticalBox, "BottomPanelContent")
-    _add(panel, panel_content)
-
-    top_rule = _border(tree, "TopGildedRule", GOLD)
-    top_rule_size = _size(tree, "TopGildedRuleSize", None, 3)
-    _add(top_rule_size, top_rule)
-    panel_content.add_child_to_vertical_box(top_rule_size)
-
-    header_size = _size(tree, "HeaderSize", None, 42)
-    panel_content.add_child_to_vertical_box(header_size)
-    header = _construct(tree, unreal.Overlay, "FleetHeader")
-    _add(header_size, header)
-
-    selected_text = _text(
-        tree, "SelectionCountText", "FLEET SELECTED  2 / 8", 18, GOLD, 2
-    )
-    selected_slot = header.add_child_to_overlay(selected_text)
-    _set_padding(selected_slot, _margin(12, 5, 12, 2))
-
-    no_selection = _text(
-        tree,
-        "NoSelectionText",
-        "SELECT A SHIP  |  RIGHT-CLICK THE SEA TO SET COURSE",
-        14,
-        unreal.LinearColor(0.68, 0.61, 0.46, 1.0),
-        1,
-    )
-    no_selection_slot = header.add_child_to_overlay(no_selection)
-    _set_padding(no_selection_slot, _margin(370, 7, 10, 2))
-
-    row_scale = _construct(tree, unreal.ScaleBox, "ShipCardScale")
-    scale_slot = panel_content.add_child_to_vertical_box(row_scale)
-    _fill_vertical_slot(scale_slot, _margin(5, 0, 5, 0))
     stretch = _enum(unreal.Stretch, "SCALE_TO_FIT", "SCALE_TO_FIT_X")
     if stretch is not None:
         _set(row_scale, "stretch", stretch)
@@ -483,25 +429,14 @@ def _build_blueprint():
     for card_number in range(1, MAX_CARDS + 1):
         card = _build_card(tree, card_number)
         card_slot = ship_row.add_child_to_horizontal_box(card)
-        _set_padding(card_slot, _margin(4, 1, 4, 1))
-
-    footer = _text(
-        tree,
-        "OrderHintText",
-        "LMB: SELECT  |  SHIFT: ADD TO FLEET  |  RMB: HELM ORDER",
-        11,
-        unreal.LinearColor(0.56, 0.50, 0.38, 1.0),
-        1,
-    )
-    footer_slot = panel_content.add_child_to_vertical_box(footer)
-    _set_padding(footer_slot, _margin(8, 2, 8, 1))
+        _set_padding(card_slot, _margin(4, 0, 4, 0))
 
     # Date and wind are image-only displays. Every glyph has a dark enlarged copy
     # under the white face image, producing an outer-glow treatment without text.
     status_panel = _border(
         tree,
         "DateWindPanel",
-        unreal.LinearColor(0.015, 0.022, 0.028, 0.74),
+        unreal.LinearColor(0.0, 0.0, 0.0, 0.0),
         _margin(12, 8, 12, 8),
     )
     status_slot = root.add_child_to_canvas(status_panel)
@@ -509,7 +444,7 @@ def _build_blueprint():
         status_slot,
         _anchors(1.0, 0.0, 1.0, 0.0),
         unreal.Vector2D(1.0, 0.0),
-        _margin(-24, 24, 700, 128),
+        _margin(-24, 24, 590, 112),
         z_order=2,
     )
 
@@ -561,15 +496,15 @@ def _build_blueprint():
         glyph_slot = wind_row.add_child_to_horizontal_box(glyph)
         _set_padding(glyph_slot, _margin(4, 0, 4, 0))
 
-    required = ["ShipCardRow", "SelectionCountText", "NoSelectionText"]
+    required = ["ShipCardRow"]
     for card_number in range(1, MAX_CARDS + 1):
         suffix = "{:02d}".format(card_number)
         required.extend(
             "{}{}".format(prefix, suffix)
             for prefix in (
                 "CardContainer",
-                "FactionFrame",
-                "RankBand",
+                "FactionGlow",
+                "LocketFrame",
                 "Portrait",
                 "CaptainName",
                 "ShipName",
@@ -631,13 +566,13 @@ def _build_title_blueprint():
 
     # Multiple translucent brush layers make a soft, alpha-edged ornamental frame
     # while remaining entirely editable in the WBP Designer.
-    panel_size = _size(tree, "TitlePanelSize", 900.0, 650.0)
+    panel_size = _size(tree, "TitlePanelSize", 900.0, 730.0)
     panel_slot = root.add_child_to_canvas(panel_size)
     _configure_canvas_slot(
         panel_slot,
         _anchors(0.5, 0.5, 0.5, 0.5),
         unreal.Vector2D(0.5, 0.5),
-        _margin(0, 0, 900, 650),
+        _margin(0, 0, 900, 730),
         z_order=1,
     )
 
@@ -737,7 +672,77 @@ def _build_title_blueprint():
     _set(description, "auto_wrap_text", True)
     _set(description, "wrap_text_at", 710.0)
     description_slot = content.add_child_to_vertical_box(description)
-    _set_padding(description_slot, _margin(50, 6, 50, 24))
+    _set_padding(description_slot, _margin(50, 6, 50, 16))
+
+    mode_row = _construct(tree, unreal.HorizontalBox, "GraphicModeRow")
+    mode_row_slot = content.add_child_to_vertical_box(mode_row)
+    _set_padding(mode_row_slot, _margin(190, 0, 190, 18))
+
+    mode_label = _text(
+        tree,
+        "GraphicModeLabel",
+        "GRAPHIC MODE",
+        16,
+        unreal.LinearColor(0.78, 0.55, 0.22, 1.0),
+        1,
+    )
+    label_slot = mode_row.add_child_to_horizontal_box(mode_label)
+    _set_padding(label_slot, _margin(0, 9, 24, 0))
+
+    combo_frame = _border(
+        tree,
+        "GraphicModeBronzeFrame",
+        unreal.LinearColor(0.56, 0.31, 0.09, 1.0),
+        _margin(2, 2, 2, 2),
+    )
+    combo_frame_size = _size(tree, "GraphicModeFrameSize", 230, 44)
+    _add(combo_frame_size, combo_frame)
+    combo_slot = mode_row.add_child_to_horizontal_box(combo_frame_size)
+    _set_padding(combo_slot, _margin(0, 0, 0, 0))
+
+    mode_combo = _construct(tree, unreal.ComboBoxString, "GraphicModeComboBox")
+    _call(mode_combo, "add_option", "3D")
+    _call(mode_combo, "add_option", "2D")
+    _call(mode_combo, "set_selected_option", "3D")
+    _set(mode_combo, "font", _font(17, 0))
+    _set(mode_combo, "foreground_color", _slate_color(INK))
+    _set(mode_combo, "content_padding", _margin(18, 8, 12, 8))
+
+    combo_style = mode_combo.get_editor_property("widget_style")
+    button_style = combo_style.get_editor_property("combo_button_style")
+    inner_button = button_style.get_editor_property("button_style")
+    for brush_name, color in (
+        ("normal", unreal.LinearColor(0.76, 0.66, 0.45, 1.0)),
+        ("hovered", unreal.LinearColor(0.87, 0.76, 0.52, 1.0)),
+        ("pressed", unreal.LinearColor(0.66, 0.54, 0.34, 1.0)),
+    ):
+        brush = inner_button.get_editor_property(brush_name)
+        _set(brush, "draw_as", _enum(unreal.SlateBrushDrawType, "BOX"))
+        _set(brush, "tint_color", _slate_color(color))
+        _set(inner_button, brush_name, brush)
+    _set(button_style, "button_style", inner_button)
+    _set(combo_style, "combo_button_style", button_style)
+    _set(mode_combo, "widget_style", combo_style)
+
+    item_style = mode_combo.get_editor_property("item_style")
+    for brush_name, color in (
+        ("even_row_background_brush", unreal.LinearColor(0.76, 0.66, 0.45, 1.0)),
+        ("odd_row_background_brush", unreal.LinearColor(0.76, 0.66, 0.45, 1.0)),
+        ("even_row_background_hovered_brush", unreal.LinearColor(0.87, 0.76, 0.52, 1.0)),
+        ("odd_row_background_hovered_brush", unreal.LinearColor(0.87, 0.76, 0.52, 1.0)),
+        ("active_brush", unreal.LinearColor(0.66, 0.54, 0.34, 1.0)),
+        ("active_hovered_brush", unreal.LinearColor(0.87, 0.76, 0.52, 1.0)),
+        ("inactive_brush", unreal.LinearColor(0.76, 0.66, 0.45, 1.0)),
+        ("inactive_hovered_brush", unreal.LinearColor(0.87, 0.76, 0.52, 1.0)),
+    ):
+        brush = item_style.get_editor_property(brush_name)
+        _set(brush, "draw_as", _enum(unreal.SlateBrushDrawType, "BOX"))
+        _set(brush, "tint_color", _slate_color(color))
+        _set(item_style, brush_name, brush)
+    _set(item_style, "text_color", _slate_color(INK))
+    _set(item_style, "selected_text_color", _slate_color(INK))
+    _set(mode_combo, "item_style", item_style)
+    _add(combo_frame, mode_combo)
 
     spacer = _construct(tree, unreal.Spacer, "TitleFlexibleSpacer")
     spacer_slot = content.add_child_to_vertical_box(spacer)
@@ -820,6 +825,7 @@ def _build_title_blueprint():
         name
         for name in (
             "DepartureButton",
+            "GraphicModeComboBox",
             "TitlePanel",
             "LogoImage",
             "FullscreenBlackOverlay",

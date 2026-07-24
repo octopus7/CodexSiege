@@ -6,8 +6,10 @@
 
 namespace SailOcean
 {
-    constexpr int32 Resolution = 41;
-    constexpr float CellSize = 720.0f;
+    // 90,000uu across, leaving a broad visual margin around the 60,000uu
+    // playable ship area even at the fleet-level camera zoom.
+    constexpr int32 Resolution = 61;
+    constexpr float CellSize = 1500.0f;
 }
 
 ASailOceanActor::ASailOceanActor()

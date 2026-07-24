@@ -33,6 +33,12 @@ UWidget* USailFleetUIEditorLibrary::ConstructWidget(
         if (Widget)
         {
             Widget->bIsVariable = true;
+            if (UWidgetBlueprint* WidgetBlueprint =
+                    WidgetTree->GetTypedOuter<UWidgetBlueprint>())
+            {
+                WidgetBlueprint->WidgetVariableNameToGuidMap.FindOrAdd(
+                    Widget->GetFName()) = FGuid::NewGuid();
+            }
         }
         return Widget;
     }
@@ -45,6 +51,11 @@ void USailFleetUIEditorLibrary::ClearWidgetTree(UWidgetTree* WidgetTree)
 #if WITH_EDITOR
     if (WidgetTree && WidgetTree->RootWidget)
     {
+        if (UWidgetBlueprint* WidgetBlueprint =
+                WidgetTree->GetTypedOuter<UWidgetBlueprint>())
+        {
+            WidgetBlueprint->WidgetVariableNameToGuidMap.Reset();
+        }
         WidgetTree->RemoveWidget(WidgetTree->RootWidget);
         WidgetTree->RootWidget = nullptr;
     }

@@ -37,6 +37,23 @@ void ASailGameMode::BeginPlay()
             {
                 FleetHUDWidget->AddToViewport(10);
                 FleetHUDWidget->SetBattleHUDVisible(false);
+                const auto LoadGlyph = [](const TCHAR* Path)
+                {
+                    return LoadObject<UTexture2D>(nullptr, Path);
+                };
+                FleetHUDWidget->SetDateGlyphTextures(
+                    LoadGlyph(TEXT("/Game/UI/DateGlyphs/T_Date_Weekday_FRI.T_Date_Weekday_FRI")),
+                    LoadGlyph(TEXT("/Game/UI/DateGlyphs/T_Date_Punctuation_Dot.T_Date_Punctuation_Dot")),
+                    LoadGlyph(TEXT("/Game/UI/DateGlyphs/T_Date_Digit_2.T_Date_Digit_2")),
+                    LoadGlyph(TEXT("/Game/UI/DateGlyphs/T_Date_Digit_4.T_Date_Digit_4")),
+                    LoadGlyph(TEXT("/Game/UI/DateGlyphs/T_Date_Month_July.T_Date_Month_July")),
+                    LoadGlyph(TEXT("/Game/UI/DateGlyphs/T_Date_Digit_1.T_Date_Digit_1")),
+                    LoadGlyph(TEXT("/Game/UI/DateGlyphs/T_Date_Digit_7.T_Date_Digit_7")),
+                    LoadGlyph(TEXT("/Game/UI/DateGlyphs/T_Date_Digit_1.T_Date_Digit_1")),
+                    LoadGlyph(TEXT("/Game/UI/DateGlyphs/T_Date_Digit_5.T_Date_Digit_5")));
+                FleetHUDWidget->SetWindGlyphTextures(
+                    LoadGlyph(TEXT("/Game/UI/DateGlyphs/T_Wind_Compass.T_Wind_Compass")),
+                    LoadGlyph(TEXT("/Game/UI/DateGlyphs/T_Wind_Arrow.T_Wind_Arrow")));
             }
         }
         if (UClass* TitleClass = LoadClass<USailTitleScreenWidget>(
@@ -56,6 +73,10 @@ void ASailGameMode::BeginPlay()
 
     if (FParse::Param(FCommandLine::Get(), TEXT("AutoStartBattle")))
     {
+        if (TitleScreenWidget)
+        {
+            TitleScreenWidget->SetVisibility(ESlateVisibility::Collapsed);
+        }
         HandleFleetDeparture();
     }
 }
@@ -74,6 +95,14 @@ void ASailGameMode::HandleFleetDeparture()
     }
     if (AFleetBattleDirector* Director = BattleDirector.Get())
     {
+        if (FParse::Param(FCommandLine::Get(), TEXT("Graphics2D")))
+        {
+            Director->SetGraphicsMode(ESailGraphicsMode::TwoDimensional);
+        }
+        else if (TitleScreenWidget)
+        {
+            Director->SetGraphicsMode(TitleScreenWidget->GetSelectedGraphicsMode());
+        }
         Director->StartBattle();
     }
 }
@@ -121,19 +150,27 @@ void ASailGameMode::RefreshFleetHUD()
         Entry.HealthFraction = Ship->GetHealthRatio();
         const TCHAR* PortraitPath =
             Ship->GetCaptainName().Contains(TEXT("Ward"))
-                ? TEXT("/Game/UI/Captains/T_Captain_Blue_Admiral_Ward.T_Captain_Blue_Admiral_Ward")
+                ? TEXT("/Game/UI/Captains/T_Captain_Blue_Admiral_Ward_Oval.T_Captain_Blue_Admiral_Ward_Oval")
                 : Ship->GetCaptainName().Contains(TEXT("Mercer"))
-                    ? TEXT("/Game/UI/Captains/T_Captain_Blue_Captain_Mercer.T_Captain_Blue_Captain_Mercer")
+                    ? TEXT("/Game/UI/Captains/T_Captain_Blue_Captain_Mercer_Oval.T_Captain_Blue_Captain_Mercer_Oval")
                     : Ship->GetCaptainName().Contains(TEXT("Reed"))
-                        ? TEXT("/Game/UI/Captains/T_Captain_Blue_Captain_Reed.T_Captain_Blue_Captain_Reed")
+                        ? TEXT("/Game/UI/Captains/T_Captain_Blue_Captain_Reed_Oval.T_Captain_Blue_Captain_Reed_Oval")
                         : Ship->GetCaptainName().Contains(TEXT("Voss"))
-                            ? TEXT("/Game/UI/Captains/T_Captain_Red_Admiral_Voss.T_Captain_Red_Admiral_Voss")
+                            ? TEXT("/Game/UI/Captains/T_Captain_Red_Admiral_Voss_Oval.T_Captain_Red_Admiral_Voss_Oval")
                             : Ship->GetCaptainName().Contains(TEXT("Marat"))
-                                ? TEXT("/Game/UI/Captains/T_Captain_Red_Captain_Marat.T_Captain_Red_Captain_Marat")
+                                ? TEXT("/Game/UI/Captains/T_Captain_Red_Captain_Marat_Oval.T_Captain_Red_Captain_Marat_Oval")
                                 : Ship->GetCaptainName().Contains(TEXT("Vale"))
-                                    ? TEXT("/Game/UI/Captains/T_Captain_Red_Captain_Vale.T_Captain_Red_Captain_Vale")
-                                    : TEXT("/Game/UI/Captains/T_Captain_Red_Captain_Cruz.T_Captain_Red_Captain_Cruz");
+                                    ? TEXT("/Game/UI/Captains/T_Captain_Red_Captain_Vale_Oval.T_Captain_Red_Captain_Vale_Oval")
+                                    : TEXT("/Game/UI/Captains/T_Captain_Red_Captain_Cruz_Oval.T_Captain_Red_Captain_Cruz_Oval");
         Entry.CaptainPortrait = LoadObject<UTexture2D>(nullptr, PortraitPath);
+        if (!Entry.CaptainPortrait)
+        {
+            UE_LOG(
+                LogTemp,
+                Warning,
+                TEXT("Fleet captain portrait missing: %s"),
+                PortraitPath);
+        }
     }
     FleetHUDWidget->SetSelectedShips(Entries);
 }

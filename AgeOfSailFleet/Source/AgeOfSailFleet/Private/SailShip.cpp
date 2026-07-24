@@ -4,11 +4,13 @@
 #include "AgeOfSailFleet.h"
 #include "Camera/CameraComponent.h"
 #include "CannonballActor.h"
+#include "Components/BillboardComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/Texture2D.h"
 #include "EngineUtils.h"
 #include "FleetBattleDirector.h"
 #include "FlipbookEffectActor.h"
@@ -25,6 +27,8 @@ namespace SailShipTuning
     constexpr float Acceleration = 105.0f;
     constexpr float TurnRate = 17.0f;
     constexpr float BroadsideRange = 3300.0f;
+    constexpr float WorldHalfExtent = 30000.0f;
+    constexpr float OrderHalfExtent = 28200.0f;
 }
 
 ASailShip::ASailShip()
@@ -46,6 +50,14 @@ ASailShip::ASailShip()
     HullMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("HullMesh"));
     HullMesh->SetupAttachment(VisualRoot);
     HullMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    ShipSprite = CreateDefaultSubobject<UBillboardComponent>(TEXT("ShipSprite"));
+    ShipSprite->SetupAttachment(VisualRoot);
+    ShipSprite->SetRelativeLocation(FVector(0.0f, 0.0f, 470.0f));
+    ShipSprite->SetRelativeScale3D(FVector(5.2f));
+    ShipSprite->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    ShipSprite->bIsScreenSizeScaled = false;
+    ShipSprite->SetHiddenInGame(true);
 
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(CollisionBox);
@@ -160,6 +172,7 @@ void ASailShip::Tick(const float DeltaSeconds)
     const float Roll = FMath::Sin(BattleAge * 0.91f + GetActorLocation().X * 0.0005f) * 2.1f;
     VisualRoot->SetRelativeLocation(FVector(0.0f, 0.0f, Bob - 70.0f));
     VisualRoot->SetRelativeRotation(FRotator(Pitch, 0.0f, Roll));
+    Update2DSprite();
 }
 
 void ASailShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -180,6 +193,14 @@ float ASailShip::GetStarboardReloadRatio() const
 void ASailShip::SetMoveCommand(const FVector& Destination)
 {
     MoveDestination = Destination;
+    MoveDestination.X = FMath::Clamp(
+        MoveDestination.X,
+        -SailShipTuning::OrderHalfExtent,
+        SailShipTuning::OrderHalfExtent);
+    MoveDestination.Y = FMath::Clamp(
+        MoveDestination.Y,
+        -SailShipTuning::OrderHalfExtent,
+        SailShipTuning::OrderHalfExtent);
     MoveDestination.Z = GetActorLocation().Z;
     bHasMoveCommand = true;
     AttackTarget.Reset();
@@ -206,8 +227,19 @@ void ASailShip::SetSelected(const bool bInSelected)
     }
 }
 
+void ASailShip::SetGraphicsMode(const ESailGraphicsMode InGraphicsMode)
+{
+    GraphicsMode = InGraphicsMode;
+}
+
 void ASailShip::BuildVisuals()
 {
+    if (GraphicsMode == ESailGraphicsMode::TwoDimensional)
+    {
+        Build2DSpriteVisuals();
+        return;
+    }
+
     if (bVisualsBuilt)
     {
         if (TrimMaterial)
@@ -319,6 +351,85 @@ void ASailShip::BuildVisuals()
     BuildMastsAndRigging();
     BuildSails();
     BuildDecorations();
+}
+
+void ASailShip::Build2DSpriteVisuals()
+{
+    bVisualsBuilt = true;
+    HullMesh->SetHiddenInGame(true);
+    DirectionalSprites.Reset();
+
+    static const TCHAR* DirectionNames[] =
+    {
+        TEXT("N"), TEXT("NE"), TEXT("E"), TEXT("SE"),
+        TEXT("S"), TEXT("SW"), TEXT("W"), TEXT("NW")
+    };
+    const TCHAR* Faction = Team == 0 ? TEXT("Blue") : TEXT("Red");
+    for (const TCHAR* Direction : DirectionNames)
+    {
+        const FString AssetPath = FString::Printf(
+            TEXT("/Game/Art/Sprites/Ships/T_Ship_%s_%s.T_Ship_%s_%s"),
+            Faction,
+            Direction,
+            Faction,
+            Direction);
+        DirectionalSprites.Add(LoadObject<UTexture2D>(nullptr, *AssetPath));
+    }
+
+    ShipSprite->SetHiddenInGame(false);
+    ShipSprite->SetRelativeScale3D(FVector(
+        ShipRate == 1 ? 5.8f : ShipRate == 2 ? 5.3f : 4.8f));
+    ActiveSpriteDirection = INDEX_NONE;
+    Update2DSprite();
+
+    if (!DirectionalSprites.IsValidIndex(0) || !DirectionalSprites[0])
+    {
+        UE_LOG(
+            LogAgeOfSail,
+            Warning,
+            TEXT("2D ship sprites are missing for faction %s; run import_game_assets.py."),
+            Faction);
+    }
+}
+
+void ASailShip::Update2DSprite()
+{
+    if (GraphicsMode != ESailGraphicsMode::TwoDimensional
+        || !ShipSprite
+        || DirectionalSprites.Num() != 8)
+    {
+        return;
+    }
+
+    const APlayerController* PlayerController = GetWorld()
+        ? GetWorld()->GetFirstPlayerController()
+        : nullptr;
+    const APlayerCameraManager* CameraManager =
+        PlayerController ? PlayerController->PlayerCameraManager : nullptr;
+    if (!CameraManager)
+    {
+        return;
+    }
+
+    FVector ToCamera = CameraManager->GetCameraLocation() - GetActorLocation();
+    ToCamera.Z = 0.0f;
+    if (!ToCamera.Normalize())
+    {
+        return;
+    }
+
+    const float RelativeYaw = FMath::FindDeltaAngleDegrees(
+        GetActorRotation().Yaw,
+        ToCamera.Rotation().Yaw);
+    const int32 DirectionIndex =
+        (FMath::RoundToInt(RelativeYaw / 45.0f) + 8) % 8;
+    if (DirectionIndex != ActiveSpriteDirection
+        && DirectionalSprites.IsValidIndex(DirectionIndex)
+        && DirectionalSprites[DirectionIndex])
+    {
+        ActiveSpriteDirection = DirectionIndex;
+        ShipSprite->SetSprite(DirectionalSprites[DirectionIndex]);
+    }
 }
 
 void ASailShip::BuildHull()
@@ -748,8 +859,14 @@ void ASailShip::TickMovement(const float DeltaSeconds)
         0.0f));
 
     FVector NewLocation = GetActorLocation() + GetActorForwardVector() * CurrentSpeed * DeltaSeconds;
-    NewLocation.X = FMath::Clamp(NewLocation.X, -11500.0f, 11500.0f);
-    NewLocation.Y = FMath::Clamp(NewLocation.Y, -11500.0f, 11500.0f);
+    NewLocation.X = FMath::Clamp(
+        NewLocation.X,
+        -SailShipTuning::WorldHalfExtent,
+        SailShipTuning::WorldHalfExtent);
+    NewLocation.Y = FMath::Clamp(
+        NewLocation.Y,
+        -SailShipTuning::WorldHalfExtent,
+        SailShipTuning::WorldHalfExtent);
     NewLocation.Z = 0.0f;
     SetActorLocation(NewLocation, true);
 }
