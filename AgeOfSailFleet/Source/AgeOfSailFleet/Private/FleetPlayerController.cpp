@@ -155,8 +155,8 @@ void AFleetPlayerController::IssueContextCommand()
         const int32 Row = Index / ColumnCount;
         const int32 Column = Index % ColumnCount;
         const FVector FormationOffset(
-            static_cast<float>(Row) * -900.0f,
-            (static_cast<float>(Column) - (ColumnCount - 1) * 0.5f) * 950.0f,
+            static_cast<float>(Row) * -3800.0f,
+            (static_cast<float>(Column) - (ColumnCount - 1) * 0.5f) * 2400.0f,
             0.0f);
         Ship->SetMoveCommand(CommandPoint + FormationOffset);
     }

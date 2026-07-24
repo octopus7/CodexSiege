@@ -2,6 +2,8 @@
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Widget.h"
+#include "Engine/Font.h"
+#include "Engine/FontFace.h"
 
 #if WITH_EDITOR
 #include "Kismet2/KismetEditorUtilities.h"
@@ -71,5 +73,33 @@ void USailFleetUIEditorLibrary::CompileWidgetBlueprint(UObject* WidgetBlueprintO
     {
         FKismetEditorUtilities::CompileBlueprint(WidgetBlueprint);
     }
+#endif
+}
+
+bool USailFleetUIEditorLibrary::ConfigureRuntimeFont(
+    UFont* FontAsset,
+    UFontFace* FontFaceAsset)
+{
+#if WITH_EDITOR
+    if (!FontAsset || !FontFaceAsset)
+    {
+        return false;
+    }
+
+    FontAsset->Modify();
+    FontAsset->FontCacheType = EFontCacheType::Runtime;
+    FontAsset->RuntimeFontSource = ERuntimeFontSource::Asset;
+
+    FCompositeFont& CompositeFont = FontAsset->GetMutableInternalCompositeFont();
+    CompositeFont.DefaultTypeface.Fonts.Reset();
+    FTypefaceEntry& RegularFace =
+        CompositeFont.DefaultTypeface.Fonts.Emplace_GetRef(FName(TEXT("Regular")));
+    RegularFace.Font = FFontData(FontFaceAsset);
+    CompositeFont.MakeDirty();
+
+    FontAsset->MarkPackageDirty();
+    return true;
+#else
+    return false;
 #endif
 }

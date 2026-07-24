@@ -66,6 +66,28 @@ def _anchors(min_x, min_y, max_x, max_y):
     return value
 
 
+def _configure_canvas_slot(
+    slot,
+    anchors,
+    alignment,
+    offsets,
+    auto_size=False,
+    z_order=None,
+):
+    """Author CanvasPanelSlot layout through its UE 5.7 setter API.
+
+    CanvasPanelSlot does not expose anchors/alignment/offsets as independently
+    writable editor properties in every engine build.  Silently writing those
+    names left the generated WBP children at their 100x30 top-left defaults.
+    """
+    slot.set_anchors(anchors)
+    slot.set_alignment(alignment)
+    slot.set_offsets(offsets)
+    slot.set_auto_size(bool(auto_size))
+    if z_order is not None:
+        slot.set_z_order(int(z_order))
+
+
 def _slate_color(color):
     result = unreal.SlateColor()
     _set(result, "specified_color", color)
@@ -83,13 +105,16 @@ def _load_ui_font():
     # Drop any OFL/Apache licensed antique font at the first path to upgrade the
     # look without changing the WBP script. Engine Roboto is the offline fallback.
     candidates = (
+        "/Game/UI/Fonts/FleetAntiqueRuntime",
         "/Game/UI/Fonts/FleetAntique",
         "/Engine/EngineFonts/RobotoDistanceField",
         "/Engine/EngineFonts/Roboto",
     )
     for path in candidates:
         asset = unreal.EditorAssetLibrary.load_asset(path)
-        if asset:
+        # A raw FontFace does not implement IFontProviderInterface. Assigning
+        # one directly makes Slate display its LastResort "A" placeholder.
+        if asset and isinstance(asset, unreal.Font):
             unreal.log("Fleet HUD font: {}".format(path))
             return asset
     return None
@@ -103,6 +128,7 @@ def _font(size, outline=1):
     _set(info, "size", int(size))
     if UI_FONT:
         _set(info, "font_object", UI_FONT)
+        _set(info, "typeface_font_name", "Regular")
     outline_settings = unreal.FontOutlineSettings()
     _set(outline_settings, "outline_size", int(outline))
     _set(outline_settings, "outline_color", INK)
@@ -328,7 +354,7 @@ def _build_card(tree, card_number):
     ship_class = _text(
         tree,
         "ShipClass{}".format(suffix),
-        "FIRST-RATE • 100 GUNS",
+        "FIRST-RATE | 100 GUNS",
         9,
         unreal.LinearColor(0.63, 0.56, 0.42, 1.0),
         1,
@@ -394,15 +420,23 @@ def _build_blueprint():
 
     shadow = _border(tree, "BottomPanelShadow", unreal.LinearColor(0.0, 0.0, 0.0, 0.72))
     shadow_slot = root.add_child_to_canvas(shadow)
-    _set(shadow_slot, "anchors", _anchors(0.02, 1.0, 0.98, 1.0))
-    _set(shadow_slot, "alignment", unreal.Vector2D(0.0, 1.0))
-    _set(shadow_slot, "offsets", _margin(0, -326, 0, 318))
+    _configure_canvas_slot(
+        shadow_slot,
+        _anchors(0.02, 1.0, 0.98, 1.0),
+        unreal.Vector2D(0.0, 1.0),
+        _margin(0, -8, 0, 318),
+        z_order=0,
+    )
 
     panel = _border(tree, "BottomCommandPanel", PANEL, _margin(9, 7, 9, 7))
     panel_slot = root.add_child_to_canvas(panel)
-    _set(panel_slot, "anchors", _anchors(0.025, 1.0, 0.975, 1.0))
-    _set(panel_slot, "alignment", unreal.Vector2D(0.0, 1.0))
-    _set(panel_slot, "offsets", _margin(0, -320, 0, 310))
+    _configure_canvas_slot(
+        panel_slot,
+        _anchors(0.025, 1.0, 0.975, 1.0),
+        unreal.Vector2D(0.0, 1.0),
+        _margin(0, -8, 0, 310),
+        z_order=1,
+    )
 
     panel_content = _construct(tree, unreal.VerticalBox, "BottomPanelContent")
     _add(panel, panel_content)
@@ -426,7 +460,7 @@ def _build_blueprint():
     no_selection = _text(
         tree,
         "NoSelectionText",
-        "SELECT A SHIP  •  RIGHT-CLICK THE SEA TO SET COURSE",
+        "SELECT A SHIP  |  RIGHT-CLICK THE SEA TO SET COURSE",
         14,
         unreal.LinearColor(0.68, 0.61, 0.46, 1.0),
         1,
@@ -454,7 +488,7 @@ def _build_blueprint():
     footer = _text(
         tree,
         "OrderHintText",
-        "LMB: SELECT  •  SHIFT: ADD TO FLEET  •  RMB: HELM ORDER",
+        "LMB: SELECT  |  SHIFT: ADD TO FLEET  |  RMB: HELM ORDER",
         11,
         unreal.LinearColor(0.56, 0.50, 0.38, 1.0),
         1,
@@ -471,9 +505,13 @@ def _build_blueprint():
         _margin(12, 8, 12, 8),
     )
     status_slot = root.add_child_to_canvas(status_panel)
-    _set(status_slot, "anchors", _anchors(1.0, 0.0, 1.0, 0.0))
-    _set(status_slot, "alignment", unreal.Vector2D(1.0, 0.0))
-    _set(status_slot, "offsets", _margin(-24, 24, 700, 128))
+    _configure_canvas_slot(
+        status_slot,
+        _anchors(1.0, 0.0, 1.0, 0.0),
+        unreal.Vector2D(1.0, 0.0),
+        _margin(-24, 24, 700, 128),
+        z_order=2,
+    )
 
     status_content = _construct(tree, unreal.VerticalBox, "DateWindContent")
     _add(status_panel, status_content)
@@ -583,16 +621,25 @@ def _build_title_blueprint():
 
     veil = _border(tree, "OceanVeil", unreal.LinearColor(0.012, 0.025, 0.035, 0.92))
     veil_slot = root.add_child_to_canvas(veil)
-    _set(veil_slot, "anchors", _anchors(0.0, 0.0, 1.0, 1.0))
-    _set(veil_slot, "offsets", _margin(0, 0, 0, 0))
+    _configure_canvas_slot(
+        veil_slot,
+        _anchors(0.0, 0.0, 1.0, 1.0),
+        unreal.Vector2D(0.0, 0.0),
+        _margin(0, 0, 0, 0),
+        z_order=0,
+    )
 
     # Multiple translucent brush layers make a soft, alpha-edged ornamental frame
     # while remaining entirely editable in the WBP Designer.
     panel_size = _size(tree, "TitlePanelSize", 900.0, 650.0)
     panel_slot = root.add_child_to_canvas(panel_size)
-    _set(panel_slot, "anchors", _anchors(0.5, 0.5, 0.5, 0.5))
-    _set(panel_slot, "alignment", unreal.Vector2D(0.5, 0.5))
-    _set(panel_slot, "offsets", _margin(0, 0, 900, 650))
+    _configure_canvas_slot(
+        panel_slot,
+        _anchors(0.5, 0.5, 0.5, 0.5),
+        unreal.Vector2D(0.5, 0.5),
+        _margin(0, 0, 900, 650),
+        z_order=1,
+    )
 
     outer_glow = _border(
         tree,
@@ -629,7 +676,7 @@ def _build_title_blueprint():
     crest = _text(
         tree,
         "TitleCrest",
-        "◆  ⚓  ◆",
+        "-=-  ADMIRALTY OF THE HIGH SEAS  -=-",
         24,
         unreal.LinearColor(0.72, 0.50, 0.18, 0.95),
         1,
@@ -680,8 +727,8 @@ def _build_title_blueprint():
         tree,
         "TitleDescriptionText",
         (
-            "목조 전열함의 함대를 지휘하십시오.\n"
-            "바람을 읽고, 전열을 세우며, 포문을 열어 바다의 패권을 차지하십시오."
+            "Command a fleet of wooden ships of the line.\n"
+            "Read the wind, hold formation, and open the gunports."
         ),
         17,
         unreal.LinearColor(0.78, 0.72, 0.60, 1.0),
@@ -737,7 +784,7 @@ def _build_title_blueprint():
     departure_label = _text(
         tree,
         "DepartureButtonText",
-        "함 대  출 항",
+        "SET  SAIL",
         25,
         unreal.LinearColor(0.96, 0.81, 0.43, 1.0),
         2,
@@ -761,8 +808,13 @@ def _build_title_blueprint():
     )
     _call(black_overlay, "set_render_opacity", 0.0)
     black_slot = root.add_child_to_canvas(black_overlay)
-    _set(black_slot, "anchors", _anchors(0.0, 0.0, 1.0, 1.0))
-    _set(black_slot, "offsets", _margin(0, 0, 0, 0))
+    _configure_canvas_slot(
+        black_slot,
+        _anchors(0.0, 0.0, 1.0, 1.0),
+        unreal.Vector2D(0.0, 0.0),
+        _margin(0, 0, 0, 0),
+        z_order=2,
+    )
 
     missing_title = [
         name

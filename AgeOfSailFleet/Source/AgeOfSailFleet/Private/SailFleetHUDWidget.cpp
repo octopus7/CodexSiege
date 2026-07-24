@@ -48,7 +48,7 @@ void USailFleetHUDWidget::NativePreConstruct()
         FSailShipHUDEntry BluePreview;
         BluePreview.CaptainName = NSLOCTEXT("SailFleetHUD", "PreviewBlueCaptain", "CAPT. E. HARCOURT");
         BluePreview.ShipName = NSLOCTEXT("SailFleetHUD", "PreviewBlueShip", "HMS RESOLUTE");
-        BluePreview.ShipClass = NSLOCTEXT("SailFleetHUD", "PreviewBlueClass", "FIRST-RATE • 100 GUNS");
+        BluePreview.ShipClass = NSLOCTEXT("SailFleetHUD", "PreviewBlueClass", "FIRST-RATE | 100 GUNS");
         BluePreview.Faction = ESailFleetFaction::BlueFleet;
         BluePreview.ShipRank = 3;
         PreviewShips.Add(BluePreview);
@@ -56,7 +56,7 @@ void USailFleetHUDWidget::NativePreConstruct()
         FSailShipHUDEntry RedPreview;
         RedPreview.CaptainName = NSLOCTEXT("SailFleetHUD", "PreviewRedCaptain", "CAPT. L. MOREAU");
         RedPreview.ShipName = NSLOCTEXT("SailFleetHUD", "PreviewRedShip", "LE VENGEUR");
-        RedPreview.ShipClass = NSLOCTEXT("SailFleetHUD", "PreviewRedClass", "HEAVY FRIGATE • 44 GUNS");
+        RedPreview.ShipClass = NSLOCTEXT("SailFleetHUD", "PreviewRedClass", "HEAVY FRIGATE | 44 GUNS");
         RedPreview.Faction = ESailFleetFaction::RedFleet;
         RedPreview.ShipRank = 2;
         RedPreview.HealthFraction = 0.68f;

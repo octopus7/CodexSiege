@@ -35,8 +35,8 @@ void AFleetCameraPawn::Tick(const float DeltaSeconds)
         (Forward * ForwardInput + Right * RightInput).GetClampedToMaxSize(1.0f) *
         MoveSpeed *
         DeltaSeconds;
-    Location.X = FMath::Clamp(Location.X, -10500.0f, 10500.0f);
-    Location.Y = FMath::Clamp(Location.Y, -10500.0f, 10500.0f);
+    Location.X = FMath::Clamp(Location.X, -13500.0f, 13500.0f);
+    Location.Y = FMath::Clamp(Location.Y, -13500.0f, 13500.0f);
     Location.Z = 0.0f;
     SetActorLocation(Location);
 

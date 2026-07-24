@@ -56,6 +56,76 @@ def import_texture(source: Path, asset_name: str, destination: str):
     return texture
 
 
+def import_normal_texture(source: Path, asset_name: str, destination: str):
+    texture = import_file(source, destination, asset_name=asset_name)
+    if texture and texture.get_name() != asset_name:
+        old_path = texture.get_path_name()
+        unreal.EditorAssetLibrary.rename_asset(
+            old_path,
+            f"{destination}/{asset_name}",
+        )
+        texture = unreal.load_asset(f"{destination}/{asset_name}")
+    if texture:
+        texture.set_editor_property("srgb", False)
+        texture.set_editor_property(
+            "compression_settings",
+            unreal.TextureCompressionSettings.TC_NORMALMAP,
+        )
+        try:
+            texture.set_editor_property("address_x", unreal.TextureAddress.TA_WRAP)
+            texture.set_editor_property("address_y", unreal.TextureAddress.TA_WRAP)
+        except Exception:
+            pass
+        unreal.EditorAssetLibrary.save_loaded_asset(texture)
+    return texture
+
+
+def ensure_runtime_ui_font():
+    """Wrap the imported TTF FontFace in the UFont asset Slate requires."""
+    font_path = "/Game/UI/Fonts/FleetAntiqueRuntime"
+    face_path = "/Game/UI/Fonts/FleetAntiqueFace"
+    font_asset = unreal.load_asset(font_path)
+    font_face = unreal.load_asset(face_path)
+
+    # Migrate the first version of this project, where the imported FontFace was
+    # incorrectly named FleetAntique and assigned directly to FSlateFontInfo.
+    legacy_face = unreal.load_asset("/Game/UI/Fonts/FleetAntique")
+    if not font_face and isinstance(legacy_face, unreal.FontFace):
+        font_face = legacy_face
+
+    if not font_face:
+        imported_face = import_file(
+            RAW / "UI" / "Fonts" / "PirataOne-Regular.ttf",
+            "/Game/UI/Fonts",
+        )
+        if imported_face:
+            unreal.EditorAssetLibrary.rename_asset(
+                imported_face.get_path_name(),
+                face_path,
+            )
+            font_face = unreal.load_asset(face_path)
+
+    if not font_asset:
+        font_asset = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
+            "FleetAntiqueRuntime",
+            "/Game/UI/Fonts",
+            unreal.Font,
+            unreal.FontFactory(),
+        )
+
+    if not font_asset or not font_face:
+        unreal.log_error("Could not create the FleetAntique runtime UI font.")
+        return None
+    if not unreal.SailFleetUIEditorLibrary.configure_runtime_font(
+        font_asset, font_face
+    ):
+        unreal.log_error("Could not configure the FleetAntique runtime UI font.")
+        return None
+    unreal.EditorAssetLibrary.save_loaded_asset(font_face)
+    unreal.EditorAssetLibrary.save_loaded_asset(font_asset)
+    return font_asset
+
+
 def make_texture_material(name: str, texture, translucent: bool = False):
     path = f"/Game/Art/Materials/{name}"
     existing = unreal.load_asset(path)
@@ -141,7 +211,7 @@ def make_wake_material():
     unreal.EditorAssetLibrary.save_loaded_asset(material)
 
 
-def make_ocean_material():
+def make_ocean_material(wave_normal):
     name = "M_ProceduralOcean"
     path = f"/Game/Art/Materials/{name}"
     material = unreal.load_asset(path)
@@ -158,18 +228,29 @@ def make_ocean_material():
     vertex_color = unreal.MaterialEditingLibrary.create_material_expression(
         material,
         unreal.MaterialExpressionVertexColor,
-        -240,
-        -40,
+        -620,
+        -180,
     )
     roughness = unreal.MaterialEditingLibrary.create_material_expression(
         material,
         unreal.MaterialExpressionConstant,
-        -240,
-        120,
+        -260,
+        100,
     )
-    roughness.set_editor_property("r", 0.22)
+    roughness.set_editor_property("r", 0.16)
+    specular = unreal.MaterialEditingLibrary.create_material_expression(
+        material,
+        unreal.MaterialExpressionConstant,
+        -260,
+        190,
+    )
+    specular.set_editor_property("r", 0.72)
     material.set_editor_property("blend_mode", unreal.BlendMode.BLEND_OPAQUE)
     material.set_editor_property("two_sided", True)
+    try:
+        material.set_editor_property("tangent_space_normal", True)
+    except Exception:
+        pass
     unreal.MaterialEditingLibrary.connect_material_property(
         vertex_color,
         "RGB",
@@ -180,6 +261,94 @@ def make_ocean_material():
         "",
         unreal.MaterialProperty.MP_ROUGHNESS,
     )
+    unreal.MaterialEditingLibrary.connect_material_property(
+        specular,
+        "",
+        unreal.MaterialProperty.MP_SPECULAR,
+    )
+
+    if wave_normal:
+        coordinates_a = unreal.MaterialEditingLibrary.create_material_expression(
+            material,
+            unreal.MaterialExpressionTextureCoordinate,
+            -650,
+            40,
+        )
+        coordinates_a.set_editor_property("u_tiling", 18.0)
+        coordinates_a.set_editor_property("v_tiling", 18.0)
+        panner_a = unreal.MaterialEditingLibrary.create_material_expression(
+            material,
+            unreal.MaterialExpressionPanner,
+            -470,
+            20,
+        )
+        panner_a.set_editor_property("speed_x", 0.012)
+        panner_a.set_editor_property("speed_y", 0.006)
+        sample_a = unreal.MaterialEditingLibrary.create_material_expression(
+            material,
+            unreal.MaterialExpressionTextureSample,
+            -250,
+            -70,
+        )
+        sample_a.set_editor_property("texture", wave_normal)
+        sample_a.set_editor_property(
+            "sampler_type",
+            unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL,
+        )
+
+        coordinates_b = unreal.MaterialEditingLibrary.create_material_expression(
+            material,
+            unreal.MaterialExpressionTextureCoordinate,
+            -650,
+            260,
+        )
+        coordinates_b.set_editor_property("u_tiling", 47.0)
+        coordinates_b.set_editor_property("v_tiling", 47.0)
+        panner_b = unreal.MaterialEditingLibrary.create_material_expression(
+            material,
+            unreal.MaterialExpressionPanner,
+            -470,
+            250,
+        )
+        panner_b.set_editor_property("speed_x", -0.008)
+        panner_b.set_editor_property("speed_y", 0.011)
+        sample_b = unreal.MaterialEditingLibrary.create_material_expression(
+            material,
+            unreal.MaterialExpressionTextureSample,
+            -250,
+            290,
+        )
+        sample_b.set_editor_property("texture", wave_normal)
+        sample_b.set_editor_property(
+            "sampler_type",
+            unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL,
+        )
+        blend = unreal.MaterialEditingLibrary.create_material_expression(
+            material,
+            unreal.MaterialExpressionLinearInterpolate,
+            20,
+            30,
+        )
+        blend.set_editor_property("const_alpha", 0.42)
+
+        unreal.MaterialEditingLibrary.connect_material_expressions(
+            coordinates_a, "", panner_a, "Coordinate")
+        unreal.MaterialEditingLibrary.connect_material_expressions(
+            panner_a, "", sample_a, "UVs")
+        unreal.MaterialEditingLibrary.connect_material_expressions(
+            coordinates_b, "", panner_b, "Coordinate")
+        unreal.MaterialEditingLibrary.connect_material_expressions(
+            panner_b, "", sample_b, "UVs")
+        unreal.MaterialEditingLibrary.connect_material_expressions(
+            sample_a, "RGB", blend, "A")
+        unreal.MaterialEditingLibrary.connect_material_expressions(
+            sample_b, "RGB", blend, "B")
+        unreal.MaterialEditingLibrary.connect_material_property(
+            blend,
+            "",
+            unreal.MaterialProperty.MP_NORMAL,
+        )
+
     unreal.MaterialEditingLibrary.recompile_material(material)
     unreal.EditorAssetLibrary.save_loaded_asset(material)
 
@@ -232,6 +401,11 @@ def main():
         "T_DeckOakPlanks",
         "/Game/Art/Textures",
     )
+    ocean_normal = import_normal_texture(
+        RAW / "Textures" / "OceanWaveNormal.png",
+        "T_OceanWaveNormal",
+        "/Game/Art/Textures",
+    )
     make_texture_material("M_HullOakPlanks", hull_oak)
     make_texture_material("M_DeckOakPlanks", deck_oak)
 
@@ -244,7 +418,7 @@ def main():
         texture = import_texture(RAW / "FX" / filename, texture_name, "/Game/Art/FX")
         make_texture_material(material_name, texture, translucent=True)
     make_wake_material()
-    make_ocean_material()
+    make_ocean_material(ocean_normal)
 
     glyph_dir = RAW / "UI" / "DateGlyphs"
     for source in sorted(glyph_dir.glob("*.png")):
@@ -281,17 +455,7 @@ def main():
         "/Game/UI/DateGlyphs",
     )
 
-    antique_font = unreal.load_asset("/Game/UI/Fonts/FleetAntique")
-    if not antique_font:
-        antique_font = import_file(
-            RAW / "UI" / "Fonts" / "PirataOne-Regular.ttf",
-            "/Game/UI/Fonts",
-        )
-        if antique_font:
-            unreal.EditorAssetLibrary.rename_asset(
-                antique_font.get_path_name(),
-                "/Game/UI/Fonts/FleetAntique",
-            )
+    ensure_runtime_ui_font()
 
     ship_variants = [
         ("AgeOfSailWarship_FirstRate.fbx", "SM_Warship_FirstRate"),

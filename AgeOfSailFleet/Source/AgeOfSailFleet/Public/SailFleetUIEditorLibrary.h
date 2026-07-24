@@ -6,6 +6,8 @@
 
 class UWidgetTree;
 class UWidget;
+class UFont;
+class UFontFace;
 
 /** Small editor bridge because UE 5.7 does not expose UWidgetBlueprint::WidgetTree to Python. */
 UCLASS()
@@ -31,4 +33,8 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Fleet UI|Editor", meta = (DevelopmentOnly))
     static void CompileWidgetBlueprint(UObject* WidgetBlueprintObject);
+
+    /** Configure an authored UFont to use an imported FontFace for Slate/UMG. */
+    UFUNCTION(BlueprintCallable, Category = "Fleet UI|Editor", meta = (DevelopmentOnly))
+    static bool ConfigureRuntimeFont(UFont* FontAsset, UFontFace* FontFaceAsset);
 };

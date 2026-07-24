@@ -123,7 +123,7 @@ void AFleetBattleDirector::StartBattle()
         Controller->SelectAllFriendlyShips();
         if (AFleetCameraPawn* CameraPawn = Cast<AFleetCameraPawn>(Controller->GetPawn()))
         {
-            CameraPawn->FocusLocation(FVector(-3400.0f, 0.0f, 0.0f));
+            CameraPawn->FocusLocation(FVector(-6800.0f, 0.0f, 0.0f));
         }
     }
     UE_LOG(LogAgeOfSail, Display, TEXT("Fleet battle started blue=3 red=4"));
@@ -147,16 +147,16 @@ void AFleetBattleDirector::SpawnFleet(const int32 Team)
 {
     if (Team == 0)
     {
-        SpawnShip(0, 0, FVector(-3900.0f, 0.0f, 0.0f), FRotator(0.0f, 8.0f, 0.0f), true);
-        SpawnShip(0, 1, FVector(-4700.0f, -1400.0f, 0.0f), FRotator(0.0f, 12.0f, 0.0f), false);
-        SpawnShip(0, 2, FVector(-4700.0f, 1400.0f, 0.0f), FRotator(0.0f, 3.0f, 0.0f), false);
+        SpawnShip(0, 0, FVector(-6200.0f, 0.0f, 0.0f), FRotator(0.0f, 8.0f, 0.0f), true);
+        SpawnShip(0, 1, FVector(-9800.0f, -3800.0f, 0.0f), FRotator(0.0f, 12.0f, 0.0f), false);
+        SpawnShip(0, 2, FVector(-9800.0f, 3800.0f, 0.0f), FRotator(0.0f, 3.0f, 0.0f), false);
     }
     else
     {
-        SpawnShip(1, 0, FVector(4050.0f, 0.0f, 0.0f), FRotator(0.0f, 185.0f, 0.0f), true);
-        SpawnShip(1, 1, FVector(4850.0f, -1350.0f, 0.0f), FRotator(0.0f, 190.0f, 0.0f), false);
-        SpawnShip(1, 2, FVector(4850.0f, 1350.0f, 0.0f), FRotator(0.0f, 179.0f, 0.0f), false);
-        SpawnShip(1, 3, FVector(5600.0f, 0.0f, 0.0f), FRotator(0.0f, 184.0f, 0.0f), false);
+        SpawnShip(1, 0, FVector(6200.0f, 0.0f, 0.0f), FRotator(0.0f, 185.0f, 0.0f), true);
+        SpawnShip(1, 1, FVector(9800.0f, -3800.0f, 0.0f), FRotator(0.0f, 190.0f, 0.0f), false);
+        SpawnShip(1, 2, FVector(9800.0f, 3800.0f, 0.0f), FRotator(0.0f, 179.0f, 0.0f), false);
+        SpawnShip(1, 3, FVector(12500.0f, 0.0f, 0.0f), FRotator(0.0f, 184.0f, 0.0f), false);
     }
 }
 
