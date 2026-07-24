@@ -1,6 +1,7 @@
 #include "SiegeGameMode.h"
 
 #include "EngineUtils.h"
+#include "SiegeArcherSpawner.h"
 #include "SiegePlayerController.h"
 #include "SiegeWorldDirector.h"
 
@@ -18,5 +19,11 @@ void ASiegeGameMode::BeginPlay()
     if (!Existing)
     {
         GetWorld()->SpawnActor<ASiegeWorldDirector>();
+    }
+
+    TActorIterator<ASiegeArcherSpawner> ExistingArcherSpawner(GetWorld());
+    if (!ExistingArcherSpawner)
+    {
+        GetWorld()->SpawnActor<ASiegeArcherSpawner>();
     }
 }
