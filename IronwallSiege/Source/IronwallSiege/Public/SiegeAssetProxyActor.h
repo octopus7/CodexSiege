@@ -20,6 +20,7 @@ public:
 
     virtual void OnConstruction(const FTransform& Transform) override;
     virtual void BeginPlay() override;
+    virtual void Tick(float DeltaSeconds) override;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Siege")
     ESiegeAssetSlot AssetSlot = ESiegeAssetSlot::Wall;
@@ -84,8 +85,23 @@ private:
     UPROPERTY(VisibleAnywhere)
     TObjectPtr<UStaticMeshComponent> FactionMarker;
 
+    UPROPERTY(VisibleAnywhere)
+    TObjectPtr<USceneComponent> TrebuchetArmPivot;
+
+    UPROPERTY(VisibleAnywhere)
+    TObjectPtr<UStaticMeshComponent> TrebuchetArm;
+
+    UPROPERTY(VisibleAnywhere)
+    TObjectPtr<UStaticMeshComponent> TrebuchetCounterweight;
+
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInstanceDynamic> FactionMarkerMaterial;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UMaterialInstanceDynamic> TrebuchetArmMaterial;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UMaterialInstanceDynamic> TrebuchetCounterweightMaterial;
 
     bool bCombatEnabled = false;
     bool bDefeated = false;
@@ -95,11 +111,14 @@ private:
     float AttackRange = 0.0f;
     float AttackCooldownRemaining = 0.0f;
     float ActionPulse = 0.0f;
+    float TrebuchetMotionTime = 0.0f;
     FVector CombatVelocity = FVector::ZeroVector;
     FVector CombatHomeLocation = FVector::ZeroVector;
     FVector MarkerBaseScale = FVector(0.12f);
 
     void BuildProceduralMesh();
     void RefreshFactionMarker();
+    void RefreshTrebuchetRig();
+    void UpdateTrebuchetMotion(float MotionTime);
     void HandleDefeat(AActor* DamageSource);
 };

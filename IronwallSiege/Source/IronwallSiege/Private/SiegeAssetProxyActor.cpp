@@ -162,9 +162,18 @@ namespace SiegeGeometry
     }
 }
 
+namespace SiegeTrebuchetMotion
+{
+    constexpr float Duration = 1.45f;
+    constexpr float LoadedPitch = -34.0f;
+    constexpr float ReleasePitch = 62.0f;
+    constexpr float SettledPitch = 48.0f;
+}
+
 ASiegeAssetProxyActor::ASiegeAssetProxyActor()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     SetRootComponent(Root);
@@ -190,6 +199,34 @@ ASiegeAssetProxyActor::ASiegeAssetProxyActor()
     {
         FactionMarker->SetStaticMesh(MarkerMesh.Object);
     }
+
+    TrebuchetArmPivot = CreateDefaultSubobject<USceneComponent>(TEXT("TrebuchetArmPivot"));
+    TrebuchetArmPivot->SetupAttachment(Root);
+    TrebuchetArmPivot->SetRelativeLocation(FVector(0.0f, 0.0f, 570.0f));
+
+    TrebuchetArm = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TrebuchetArm"));
+    TrebuchetArm->SetupAttachment(TrebuchetArmPivot);
+    TrebuchetArm->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    TrebuchetArm->SetCastShadow(true);
+    TrebuchetArm->SetRelativeLocation(FVector(130.0f, 0.0f, 0.0f));
+    TrebuchetArm->SetRelativeScale3D(FVector(7.8f, 0.36f, 0.36f));
+    TrebuchetArm->SetVisibility(false);
+
+    TrebuchetCounterweight = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TrebuchetCounterweight"));
+    TrebuchetCounterweight->SetupAttachment(TrebuchetArmPivot);
+    TrebuchetCounterweight->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    TrebuchetCounterweight->SetCastShadow(true);
+    TrebuchetCounterweight->SetRelativeLocation(FVector(-300.0f, 0.0f, -95.0f));
+    TrebuchetCounterweight->SetRelativeScale3D(FVector(1.5f, 1.8f, 1.9f));
+    TrebuchetCounterweight->SetVisibility(false);
+
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> RigCubeMesh(
+        TEXT("/Engine/BasicShapes/Cube.Cube"));
+    if (RigCubeMesh.Succeeded())
+    {
+        TrebuchetArm->SetStaticMesh(RigCubeMesh.Object);
+        TrebuchetCounterweight->SetStaticMesh(RigCubeMesh.Object);
+    }
 }
 
 void ASiegeAssetProxyActor::OnConstruction(const FTransform& Transform)
@@ -203,6 +240,29 @@ void ASiegeAssetProxyActor::BeginPlay()
     Super::BeginPlay();
     RefreshVisual();
     RefreshFactionMarker();
+}
+
+void ASiegeAssetProxyActor::Tick(const float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+
+    if (AssetSlot != ESiegeAssetSlot::Trebuchet || TrebuchetMotionTime <= 0.0f)
+    {
+        SetActorTickEnabled(false);
+        return;
+    }
+
+    TrebuchetMotionTime = FMath::Min(
+        SiegeTrebuchetMotion::Duration,
+        TrebuchetMotionTime + DeltaSeconds);
+    UpdateTrebuchetMotion(TrebuchetMotionTime);
+
+    if (TrebuchetMotionTime >= SiegeTrebuchetMotion::Duration)
+    {
+        TrebuchetMotionTime = 0.0f;
+        UpdateTrebuchetMotion(0.0f);
+        SetActorTickEnabled(false);
+    }
 }
 
 void ASiegeAssetProxyActor::ConfigureAsset(const ESiegeAssetSlot NewSlot)
@@ -252,6 +312,7 @@ void ASiegeAssetProxyActor::RefreshVisual()
     }
 
     RefreshFactionMarker();
+    RefreshTrebuchetRig();
 }
 
 void ASiegeAssetProxyActor::InitializeCombatant(
@@ -274,6 +335,8 @@ void ASiegeAssetProxyActor::InitializeCombatant(
     bDefeated = false;
     SetActorHiddenInGame(false);
     SetActorEnableCollision(true);
+    TrebuchetMotionTime = 0.0f;
+    UpdateTrebuchetMotion(0.0f);
     RefreshVisual();
     RefreshFactionMarker();
 }
@@ -333,6 +396,12 @@ void ASiegeAssetProxyActor::StartAttackCooldown(const float Duration)
 void ASiegeAssetProxyActor::TriggerActionPulse()
 {
     ActionPulse = 1.0f;
+    if (AssetSlot == ESiegeAssetSlot::Trebuchet && !bDefeated)
+    {
+        TrebuchetMotionTime = UE_SMALL_NUMBER;
+        UpdateTrebuchetMotion(0.0f);
+        SetActorTickEnabled(true);
+    }
 }
 
 void ASiegeAssetProxyActor::RefreshFactionMarker()
@@ -389,11 +458,115 @@ void ASiegeAssetProxyActor::RefreshFactionMarker()
     }
 }
 
+void ASiegeAssetProxyActor::RefreshTrebuchetRig()
+{
+    if (!TrebuchetArm || !TrebuchetCounterweight)
+    {
+        return;
+    }
+
+    const bool bShowRig = AssetSlot == ESiegeAssetSlot::Trebuchet && !bDefeated;
+    TrebuchetArm->SetVisibility(bShowRig);
+    TrebuchetCounterweight->SetVisibility(bShowRig);
+    if (!bShowRig)
+    {
+        return;
+    }
+
+    UMaterialInterface* BaseMaterial = LoadObject<UMaterialInterface>(
+        nullptr,
+        TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+    if (BaseMaterial && !TrebuchetArmMaterial)
+    {
+        TrebuchetArmMaterial = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+        TrebuchetArm->SetMaterial(0, TrebuchetArmMaterial);
+    }
+    if (BaseMaterial && !TrebuchetCounterweightMaterial)
+    {
+        TrebuchetCounterweightMaterial = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+        TrebuchetCounterweight->SetMaterial(0, TrebuchetCounterweightMaterial);
+    }
+
+    FLinearColor WoodColor(0.15f, 0.065f, 0.018f);
+    if (const UWorld* World = GetWorld())
+    {
+        if (const USiegeGameInstance* GameInstance = Cast<USiegeGameInstance>(World->GetGameInstance()))
+        {
+            if (const USiegeResourceSet* Set = GameInstance->GetActiveResourceSet())
+            {
+                WoodColor = Set->WoodColor * 0.72f;
+            }
+        }
+    }
+
+    if (TrebuchetArmMaterial)
+    {
+        TrebuchetArmMaterial->SetVectorParameterValue(TEXT("Color"), WoodColor);
+    }
+    if (TrebuchetCounterweightMaterial)
+    {
+        TrebuchetCounterweightMaterial->SetVectorParameterValue(
+            TEXT("Color"),
+            FLinearColor(0.075f, 0.08f, 0.085f));
+    }
+
+    UpdateTrebuchetMotion(TrebuchetMotionTime);
+}
+
+void ASiegeAssetProxyActor::UpdateTrebuchetMotion(const float MotionTime)
+{
+    if (!TrebuchetArmPivot || !TrebuchetCounterweight)
+    {
+        return;
+    }
+
+    float Pitch = SiegeTrebuchetMotion::LoadedPitch;
+    if (MotionTime > 0.0f)
+    {
+        if (MotionTime < 0.22f)
+        {
+            const float Alpha = FMath::InterpEaseOut(0.0f, 1.0f, MotionTime / 0.22f, 3.2f);
+            Pitch = FMath::Lerp(
+                SiegeTrebuchetMotion::LoadedPitch,
+                SiegeTrebuchetMotion::ReleasePitch,
+                Alpha);
+        }
+        else if (MotionTime < 0.38f)
+        {
+            const float Alpha = (MotionTime - 0.22f) / 0.16f;
+            Pitch = FMath::Lerp(
+                SiegeTrebuchetMotion::ReleasePitch,
+                SiegeTrebuchetMotion::SettledPitch,
+                Alpha);
+        }
+        else
+        {
+            const float Alpha = FMath::InterpEaseInOut(
+                0.0f,
+                1.0f,
+                (MotionTime - 0.38f) / (SiegeTrebuchetMotion::Duration - 0.38f),
+                2.0f);
+            Pitch = FMath::Lerp(
+                SiegeTrebuchetMotion::SettledPitch,
+                SiegeTrebuchetMotion::LoadedPitch,
+                Alpha);
+        }
+    }
+
+    TrebuchetArmPivot->SetRelativeRotation(FRotator(Pitch, 0.0f, 0.0f));
+
+    // The weight travels with the short end of the arm but stays vertically aligned.
+    TrebuchetCounterweight->SetRelativeRotation(FRotator(-Pitch, 0.0f, 0.0f));
+}
+
 void ASiegeAssetProxyActor::HandleDefeat(AActor* DamageSource)
 {
     bDefeated = true;
     CombatVelocity = FVector::ZeroVector;
+    TrebuchetMotionTime = 0.0f;
+    SetActorTickEnabled(false);
     SetActorEnableCollision(false);
+    RefreshTrebuchetRig();
     RefreshFactionMarker();
 
     if (AssetSlot == ESiegeAssetSlot::Gate)
@@ -495,8 +668,6 @@ void ASiegeAssetProxyActor::BuildProceduralMesh()
             Mesh.AddBeam(FVector(160, -100, 100), FVector(0, -80, 560), 24, Wood);
             Mesh.AddBeam(FVector(-160, 100, 100), FVector(0, 80, 560), 24, Wood);
             Mesh.AddBeam(FVector(160, 100, 100), FVector(0, 80, 560), 24, Wood);
-            Mesh.AddBeam(FVector(-260, 0, 570), FVector(520, 0, 780), 22, Wood * 0.85f);
-            Mesh.AddBox(FVector(-300, 0, 555), FVector(75, 90, 95), FLinearColor(0.12f, 0.12f, 0.11f));
             Mesh.AddCylinder(FVector(-180, -130, 80), 85, 30, 12, Wood, FRotator(90, 0, 0));
             Mesh.AddCylinder(FVector(180, -130, 80), 85, 30, 12, Wood, FRotator(90, 0, 0));
             Mesh.AddCylinder(FVector(-180, 130, 80), 85, 30, 12, Wood, FRotator(90, 0, 0));
