@@ -12,6 +12,7 @@ AFlipbookEffectActor::AFlipbookEffectActor()
     SetRootComponent(Plane);
     Plane->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     Plane->SetCastShadow(false);
+    Plane->SetBoundsScale(2.0f);
 
     Vertices = {
         FVector(0.0f, -50.0f, -50.0f),
@@ -32,7 +33,12 @@ void AFlipbookEffectActor::PlayEffect(
 {
     EffectAge = 0.0f;
     EffectDuration = FMath::Max(0.1f, Duration);
-    SetActorScale3D(FVector(WorldSize / 100.0f));
+    // The authored quad is 100uu wide. Call sites pass a size multiplier
+    // (roughly 3-6), producing a readable 300-600uu battle effect. Dividing
+    // by 100 here previously reduced the flipbooks to only a few world units.
+    SetActorScale3D(FVector(FMath::Max(0.1f, WorldSize)));
+    SetLifeSpan(EffectDuration + 0.15f);
+    Plane->SetVisibility(true, true);
 
     const TCHAR* MaterialPath =
         Effect == ESailFlipbookEffect::CannonMuzzle
@@ -45,6 +51,15 @@ void AFlipbookEffectActor::PlayEffect(
         Plane->SetMaterial(0, Material);
     }
     SetFrame(0);
+
+    // Face the first frame toward the camera immediately instead of waiting
+    // for the first tick, which can otherwise show a broadside flash edge-on.
+    if (APlayerCameraManager* CameraManager =
+        UGameplayStatics::GetPlayerCameraManager(this, 0))
+    {
+        SetActorRotation(
+            (CameraManager->GetCameraLocation() - GetActorLocation()).Rotation());
+    }
 }
 
 void AFlipbookEffectActor::Tick(const float DeltaSeconds)

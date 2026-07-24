@@ -834,18 +834,20 @@ void ASailShip::FireBroadside(const int32 Side)
                 ShotDirection * FMath::FRandRange(2350.0f, 2650.0f) +
                 GetActorForwardVector() * CurrentSpeed +
                 FVector(0.0f, 0.0f, FMath::FRandRange(300.0f, 430.0f)),
-                ShipRate == 1 ? 55.0f : 48.0f);
+                ShipRate == 1 ? 55.0f : 48.0f,
+                ShipRate == 1 ? 1.25f : (ShipRate == 2 ? 1.1f : 1.0f));
         }
-        if (Gun % 2 == 0)
+        if (AFlipbookEffectActor* Effect = GetWorld()->SpawnActor<AFlipbookEffectActor>(
+            AFlipbookEffectActor::StaticClass(),
+            Start + LateralDirection * 75.0f,
+            LateralDirection.Rotation()))
         {
-            if (AFlipbookEffectActor* Effect = GetWorld()->SpawnActor<AFlipbookEffectActor>(
-                AFlipbookEffectActor::StaticClass(),
-                Start + LateralDirection * 35.0f,
-                LateralDirection.Rotation()))
-            {
-                const float GradeScale = ShipRate == 1 ? 4.2f : (ShipRate == 2 ? 3.7f : 3.25f);
-                Effect->PlayEffect(ESailFlipbookEffect::CannonMuzzle, GradeScale, 0.95f);
-            }
+            const float GradeScale =
+                ShipRate == 1 ? 4.6f : (ShipRate == 2 ? 4.05f : 3.55f);
+            Effect->PlayEffect(
+                ESailFlipbookEffect::CannonMuzzle,
+                GradeScale,
+                0.8f);
         }
     }
 
@@ -872,7 +874,6 @@ void ASailShip::ReceiveCannonImpact(
     ASailShip* Attacker,
     const FVector& ImpactPoint)
 {
-    (void)ImpactPoint;
     if (!IsAfloat() || !Attacker || Attacker->GetTeam() == Team)
     {
         return;
@@ -885,7 +886,14 @@ void ASailShip::ReceiveCannonImpact(
         ImpactPoint,
         FRotator::ZeroRotator))
     {
-        Effect->PlayEffect(ESailFlipbookEffect::HullImpact, 4.5f, 1.05f);
+        const float ImpactScale =
+            Attacker->GetShipRate() == 1
+                ? 5.4f
+                : (Attacker->GetShipRate() == 2 ? 4.9f : 4.4f);
+        Effect->PlayEffect(
+            ESailFlipbookEffect::HullImpact,
+            ImpactScale,
+            1.05f);
     }
     if (Health <= 0.0f)
     {

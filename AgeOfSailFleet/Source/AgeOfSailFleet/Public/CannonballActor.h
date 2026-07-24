@@ -5,6 +5,8 @@
 #include "CannonballActor.generated.h"
 
 class ASailShip;
+class UMaterialInstanceDynamic;
+class UPointLightComponent;
 class UProjectileMovementComponent;
 class USphereComponent;
 class UStaticMeshComponent;
@@ -16,8 +18,13 @@ class AGEOFSAILFLEET_API ACannonballActor : public AActor
 
 public:
     ACannonballActor();
+    virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
-    void Launch(ASailShip* InSourceShip, const FVector& Velocity, float InDamage);
+    void Launch(
+        ASailShip* InSourceShip,
+        const FVector& Velocity,
+        float InDamage,
+        float InVisualScale = 1.0f);
 
 private:
     UPROPERTY(VisibleAnywhere)
@@ -29,11 +36,23 @@ private:
     UPROPERTY(VisibleAnywhere)
     TObjectPtr<UProjectileMovementComponent> Movement;
 
+    UPROPERTY(VisibleAnywhere)
+    TObjectPtr<UPointLightComponent> BallLight;
+
+    UPROPERTY(VisibleAnywhere)
+    TArray<TObjectPtr<UStaticMeshComponent>> TrailSegments;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UMaterialInstanceDynamic> BallMaterial;
+
     UPROPERTY()
     TWeakObjectPtr<ASailShip> SourceShip;
 
     float Damage = 45.0f;
+    float VisualScale = 1.0f;
+    float TrailSampleAccumulator = 0.0f;
     bool bImpactPlayed = false;
+    TArray<FVector> TrailPositions;
 
     UFUNCTION()
     void HandleHit(
@@ -42,4 +61,7 @@ private:
         UPrimitiveComponent* OtherComponent,
         FVector NormalImpulse,
         const FHitResult& Hit);
+
+    void SpawnWaterImpact(const FVector& ImpactLocation);
+    void UpdateTrail(float DeltaSeconds);
 };
