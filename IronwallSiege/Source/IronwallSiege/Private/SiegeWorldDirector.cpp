@@ -15,6 +15,14 @@ namespace SiegeBattle
     constexpr float SeparationRadius = 165.0f;
     constexpr float CohesionRadius = 620.0f;
     constexpr float GateApproachOffset = 235.0f;
+    constexpr int32 AttackerRanks = 12;
+    constexpr int32 AttackerFiles = 18;
+    constexpr int32 DefenderRanks = 8;
+    constexpr int32 DefenderFiles = 16;
+    constexpr float AttackerFileSpacing = 140.0f;
+    constexpr float AttackerRankSpacing = 175.0f;
+    constexpr float DefenderFileSpacing = 145.0f;
+    constexpr float DefenderRankSpacing = 120.0f;
 }
 
 ASiegeWorldDirector::ASiegeWorldDirector()
@@ -158,7 +166,7 @@ void ASiegeWorldDirector::SpawnForces()
     Trebuchet = SpawnCombatant(
         ESiegeAssetSlot::Trebuchet,
         ESiegeFaction::Attackers,
-        FVector(-800.0f, -1500.0f, 0.0f),
+        FVector(-1180.0f, -1940.0f, 0.0f),
         FRotator(0.0f, 8.0f, 0.0f),
         FVector(1.25f),
         650.0f,
@@ -170,7 +178,7 @@ void ASiegeWorldDirector::SpawnForces()
     BatteringRam = SpawnCombatant(
         ESiegeAssetSlot::BatteringRam,
         ESiegeFaction::Attackers,
-        FVector(620.0f, -1120.0f, 0.0f),
+        FVector(0.0f, -1280.0f, 0.0f),
         FRotator::ZeroRotator,
         FVector(1.15f),
         4000.0f,
@@ -189,18 +197,25 @@ void ASiegeWorldDirector::SpawnForces()
     }
 
     int32 SoldierIndex = 0;
-    for (int32 Row = 0; Row < 3; ++Row)
+    for (int32 Rank = 0; Rank < SiegeBattle::AttackerRanks; ++Rank)
     {
-        for (int32 Column = -4; Column <= 4; ++Column)
+        for (int32 File = 0; File < SiegeBattle::AttackerFiles; ++File)
         {
-            if (Row == 0 && FMath::Abs(Column) <= 1)
+            const float FileOffset =
+                static_cast<float>(File) -
+                (static_cast<float>(SiegeBattle::AttackerFiles) - 1.0f) * 0.5f;
+            const float X = FileOffset * SiegeBattle::AttackerFileSpacing;
+
+            // Leave a broad central lane so the battering ram remains visible
+            // while the army advances in dense companies on both flanks.
+            if (Rank >= 3 && Rank <= 8 && FMath::Abs(X) < 260.0f)
             {
                 continue;
             }
 
             const FVector Position(
-                static_cast<float>(Column) * 175.0f,
-                -520.0f - static_cast<float>(Row) * 245.0f,
+                X,
+                -320.0f - static_cast<float>(Rank) * SiegeBattle::AttackerRankSpacing,
                 0.0f);
             ASiegeAssetProxyActor* Soldier = SpawnCombatant(
                 ESiegeAssetSlot::Infantry,
@@ -212,7 +227,7 @@ void ASiegeWorldDirector::SpawnForces()
                 215.0f,
                 19.0f,
                 145.0f,
-                FString::Printf(TEXT("Attacker_Infantry_%02d"), SoldierIndex++));
+                FString::Printf(TEXT("Attacker_Infantry_%03d"), SoldierIndex++));
             if (Soldier)
             {
                 AttackerInfantry.Add(Soldier);
@@ -222,13 +237,16 @@ void ASiegeWorldDirector::SpawnForces()
     }
 
     SoldierIndex = 0;
-    for (int32 Row = 0; Row < 4; ++Row)
+    for (int32 Rank = 0; Rank < SiegeBattle::DefenderRanks; ++Rank)
     {
-        for (int32 Column = -2; Column <= 2; ++Column)
+        for (int32 File = 0; File < SiegeBattle::DefenderFiles; ++File)
         {
+            const float FileOffset =
+                static_cast<float>(File) -
+                (static_cast<float>(SiegeBattle::DefenderFiles) - 1.0f) * 0.5f;
             const FVector Position(
-                static_cast<float>(Column) * 185.0f,
-                430.0f + static_cast<float>(Row) * 205.0f,
+                FileOffset * SiegeBattle::DefenderFileSpacing,
+                300.0f + static_cast<float>(Rank) * SiegeBattle::DefenderRankSpacing,
                 0.0f);
             ASiegeAssetProxyActor* Soldier = SpawnCombatant(
                 ESiegeAssetSlot::Infantry,
@@ -240,7 +258,7 @@ void ASiegeWorldDirector::SpawnForces()
                 195.0f,
                 18.0f,
                 150.0f,
-                FString::Printf(TEXT("Defender_Infantry_%02d"), SoldierIndex++));
+                FString::Printf(TEXT("Defender_Infantry_%03d"), SoldierIndex++));
             if (Soldier)
             {
                 DefenderInfantry.Add(Soldier);
