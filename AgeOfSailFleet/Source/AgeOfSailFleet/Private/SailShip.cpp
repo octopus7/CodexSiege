@@ -26,7 +26,10 @@ namespace SailShipTuning
     constexpr float MaxForwardSpeed = 620.0f;
     constexpr float Acceleration = 105.0f;
     constexpr float TurnRate = 17.0f;
-    constexpr float BroadsideRange = 3300.0f;
+    constexpr float BroadsideRange = 4300.0f;
+    constexpr float PreferredBroadsideRange = 3550.0f;
+    constexpr float EmergencySeparationRange = 2450.0f;
+    constexpr float ShipAvoidanceRange = 3600.0f;
     constexpr float WorldHalfExtent = 30000.0f;
     constexpr float OrderHalfExtent = 28200.0f;
 }
@@ -204,6 +207,7 @@ void ASailShip::SetMoveCommand(const FVector& Destination)
     MoveDestination.Z = GetActorLocation().Z;
     bHasMoveCommand = true;
     AttackTarget.Reset();
+    AIBroadsideTarget.Reset();
 }
 
 void ASailShip::SetAttackTarget(ASailShip* Target)
@@ -211,6 +215,7 @@ void ASailShip::SetAttackTarget(ASailShip* Target)
     if (Target && Target != this && Target->GetTeam() != Team)
     {
         AttackTarget = Target;
+        AIBroadsideTarget.Reset();
         bHasMoveCommand = false;
     }
 }
@@ -763,7 +768,7 @@ void ASailShip::FireBroadside(const int32 Side)
                 this,
                 ShotDirection * FMath::FRandRange(2350.0f, 2650.0f) +
                 GetActorForwardVector() * CurrentSpeed +
-                FVector(0.0f, 0.0f, FMath::FRandRange(130.0f, 230.0f)),
+                FVector(0.0f, 0.0f, FMath::FRandRange(300.0f, 430.0f)),
                 ShipRate == 1 ? 55.0f : 48.0f);
         }
         if (Gun % 2 == 0)
@@ -820,8 +825,34 @@ void ASailShip::ReceiveCannonImpact(
     if (Health <= 0.0f)
     {
         bSinking = true;
+        bHasMoveCommand = false;
+        AttackTarget.Reset();
+        AIBroadsideTarget.Reset();
+        SailSetting = 0.0f;
+        SteeringInput = 0.0f;
+        SinkRollDirection = FMath::RandBool() ? 1.0f : -1.0f;
+        SinkPitchDirection = FMath::RandBool() ? 1.0f : -1.0f;
         SetSelected(false);
         CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        for (int32 Burst = 0; Burst < 3; ++Burst)
+        {
+            const FVector BurstLocation =
+                GetActorLocation()
+                + GetActorForwardVector() * FMath::FRandRange(-650.0f, 650.0f)
+                + GetActorRightVector() * FMath::FRandRange(-260.0f, 260.0f)
+                + FVector(0.0f, 0.0f, FMath::FRandRange(90.0f, 280.0f));
+            if (AFlipbookEffectActor* DestructionEffect =
+                GetWorld()->SpawnActor<AFlipbookEffectActor>(
+                    AFlipbookEffectActor::StaticClass(),
+                    BurstLocation,
+                    FRotator::ZeroRotator))
+            {
+                DestructionEffect->PlayEffect(
+                    ESailFlipbookEffect::HullImpact,
+                    ShipRate == 1 ? 6.0f : 5.2f,
+                    1.35f);
+            }
+        }
         UE_LOG(LogAgeOfSail, Display, TEXT("Ship sunk team=%d captain=%s"), Team, *CaptainName);
     }
 }
@@ -882,18 +913,11 @@ void ASailShip::TickAI(const float DeltaSeconds)
         Target = nullptr;
     }
 
-    if (Team == 0 && !Target && !bHasMoveCommand)
-    {
-        SailSetting = 0.25f;
-        SteeringInput = 0.0f;
-        return;
-    }
-
-    if (Team == 1 && !Target && AIThinkTime <= 0.0f)
+    if (!Target && !bHasMoveCommand && AIThinkTime <= 0.0f)
     {
         Target = FindNearestEnemy();
         AttackTarget = Target;
-        AIThinkTime = 0.45f;
+        AIThinkTime = 0.35f;
     }
 
     if (bHasMoveCommand)
@@ -908,7 +932,11 @@ void ASailShip::TickAI(const float DeltaSeconds)
         else
         {
             SailSetting = FMath::Clamp(Offset.Size2D() / 1600.0f, 0.38f, 1.0f);
-            AimAIAt(Offset, DeltaSeconds);
+            const FVector Separation =
+                ComputeSeparationVector(SailShipTuning::ShipAvoidanceRange);
+            AimAIAt(
+                Offset.GetSafeNormal2D() + Separation * 1.45f,
+                DeltaSeconds);
         }
         return;
     }
@@ -922,25 +950,67 @@ void ASailShip::TickAI(const float DeltaSeconds)
 
     const FVector ToTarget = Target->GetActorLocation() - GetActorLocation();
     const float Distance = ToTarget.Size2D();
-    const float LocalRight = FVector::DotProduct(GetActorRightVector(), ToTarget.GetSafeNormal2D());
-    if (Distance > 2300.0f)
+    const FVector RadialDirection = ToTarget.GetSafeNormal2D();
+
+    if (AIBroadsideTarget.Get() != Target)
     {
-        SailSetting = 0.9f;
-        AimAIAt(ToTarget, DeltaSeconds);
+        AIBroadsideTarget = Target;
+        const FVector ClockwiseTangent =
+            FVector::CrossProduct(FVector::UpVector, RadialDirection).GetSafeNormal2D();
+        const float ClockwiseAlignment =
+            FVector::DotProduct(GetActorForwardVector(), ClockwiseTangent);
+        const float CounterAlignment =
+            FVector::DotProduct(GetActorForwardVector(), -ClockwiseTangent);
+        if (FMath::IsNearlyEqual(ClockwiseAlignment, CounterAlignment, 0.05f))
+        {
+            AIBroadsideSign = ((GetUniqueID() + Team) & 1) == 0 ? 1.0f : -1.0f;
+        }
+        else
+        {
+            AIBroadsideSign = ClockwiseAlignment >= CounterAlignment ? 1.0f : -1.0f;
+        }
+    }
+
+    const FVector TangentDirection =
+        FVector::CrossProduct(FVector::UpVector, RadialDirection).GetSafeNormal2D()
+        * AIBroadsideSign;
+    const FVector Separation =
+        ComputeSeparationVector(SailShipTuning::ShipAvoidanceRange);
+    FVector DesiredHeading = TangentDirection;
+
+    if (Distance < SailShipTuning::EmergencySeparationRange)
+    {
+        const float RetreatWeight = FMath::GetMappedRangeValueClamped(
+            FVector2D(SailShipTuning::EmergencySeparationRange, 1200.0f),
+            FVector2D(0.9f, 2.2f),
+            Distance);
+        DesiredHeading =
+            TangentDirection * 0.7f
+            - RadialDirection * RetreatWeight
+            + Separation * 2.6f;
+        SailSetting = 0.92f;
     }
     else
     {
-        SailSetting = 0.52f;
-        const FVector BroadsideHeading =
-            LocalRight >= 0.0f
-                ? FVector::CrossProduct(FVector::UpVector, ToTarget).GetSafeNormal2D()
-                : FVector::CrossProduct(ToTarget, FVector::UpVector).GetSafeNormal2D();
-        AimAIAt(BroadsideHeading, DeltaSeconds);
+        const float RangeCorrection = FMath::Clamp(
+            (Distance - SailShipTuning::PreferredBroadsideRange) / 1250.0f,
+            -0.82f,
+            0.82f);
+        DesiredHeading =
+            TangentDirection
+            + RadialDirection * RangeCorrection
+            + Separation * 1.6f;
+        SailSetting =
+            Distance > SailShipTuning::BroadsideRange ? 0.82f : 0.52f;
+    }
 
-        if (Distance < SailShipTuning::BroadsideRange && FMath::Abs(LocalRight) > 0.73f)
-        {
-            FireBroadside(LocalRight >= 0.0f ? 1 : -1);
-        }
+    AimAIAt(DesiredHeading, DeltaSeconds);
+
+    const float LocalRight =
+        FVector::DotProduct(GetActorRightVector(), RadialDirection);
+    if (Distance < SailShipTuning::BroadsideRange && FMath::Abs(LocalRight) > 0.68f)
+    {
+        FireBroadside(LocalRight >= 0.0f ? 1 : -1);
     }
 }
 
@@ -951,9 +1021,16 @@ void ASailShip::TickSinking(const float DeltaSeconds)
         return;
     }
     SinkTime += DeltaSeconds;
-    AddActorWorldOffset(FVector(0.0f, 0.0f, -22.0f * DeltaSeconds));
-    AddActorWorldRotation(FRotator(0.0f, 1.4f * DeltaSeconds, 5.0f * DeltaSeconds));
-    if (SinkTime > 12.0f)
+    CurrentSpeed = FMath::FInterpConstantTo(CurrentSpeed, 0.0f, DeltaSeconds, 72.0f);
+    const float SinkSpeed = 42.0f + SinkTime * 20.0f;
+    AddActorWorldOffset(
+        GetActorForwardVector() * CurrentSpeed * 0.32f * DeltaSeconds
+        + FVector(0.0f, 0.0f, -SinkSpeed * DeltaSeconds));
+    AddActorWorldRotation(FRotator(
+        SinkPitchDirection * (1.5f + SinkTime * 0.16f) * DeltaSeconds,
+        0.35f * DeltaSeconds,
+        SinkRollDirection * (4.5f + SinkTime * 0.48f) * DeltaSeconds));
+    if (SinkTime > 14.0f)
     {
         SetActorHiddenInGame(true);
         SetActorTickEnabled(false);
@@ -979,6 +1056,35 @@ ASailShip* ASailShip::FindNearestEnemy() const
         }
     }
     return Best;
+}
+
+FVector ASailShip::ComputeSeparationVector(const float Radius) const
+{
+    FVector Separation = FVector::ZeroVector;
+    if (Radius <= KINDA_SMALL_NUMBER)
+    {
+        return Separation;
+    }
+
+    for (TActorIterator<ASailShip> It(GetWorld()); It; ++It)
+    {
+        const ASailShip* Other = *It;
+        if (!Other || Other == this || !Other->IsAfloat())
+        {
+            continue;
+        }
+
+        const FVector Away = GetActorLocation() - Other->GetActorLocation();
+        const float Distance = Away.Size2D();
+        if (Distance <= KINDA_SMALL_NUMBER || Distance >= Radius)
+        {
+            continue;
+        }
+
+        const float Weight = FMath::Square(1.0f - Distance / Radius);
+        Separation += Away.GetSafeNormal2D() * Weight;
+    }
+    return Separation.GetClampedToMaxSize(1.0f);
 }
 
 void ASailShip::AimAIAt(const FVector& DesiredDirection, const float DeltaSeconds)

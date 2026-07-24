@@ -125,13 +125,17 @@ private:
     float StarboardReload = 0.0f;
     float BattleAge = 0.0f;
     float SinkTime = 0.0f;
+    float SinkRollDirection = 1.0f;
+    float SinkPitchDirection = 1.0f;
     float AIThinkTime = 0.0f;
+    float AIBroadsideSign = 1.0f;
     float CameraYaw = 0.0f;
     float CameraPitch = -15.0f;
     float CameraDistance = 1900.0f;
     FLinearColor TrimColor = FLinearColor(0.08f, 0.22f, 0.55f);
     FVector MoveDestination = FVector::ZeroVector;
     TWeakObjectPtr<ASailShip> AttackTarget;
+    TWeakObjectPtr<ASailShip> AIBroadsideTarget;
     int32 ShipRate = 3;
     int32 GunCount = 74;
     FString CaptainName = TEXT("Captain");
@@ -184,6 +188,7 @@ private:
     void TickAI(float DeltaSeconds);
     void TickSinking(float DeltaSeconds);
     ASailShip* FindNearestEnemy() const;
+    FVector ComputeSeparationVector(float Radius) const;
     void AimAIAt(const FVector& DesiredDirection, float DeltaSeconds);
     void UpdateCamera();
 };
