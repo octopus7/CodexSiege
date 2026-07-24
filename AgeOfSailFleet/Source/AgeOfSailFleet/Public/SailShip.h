@@ -12,6 +12,7 @@ class USceneComponent;
 class USpringArmComponent;
 class UStaticMesh;
 class UStaticMeshComponent;
+class AShipWakeActor;
 
 UCLASS()
 class AGEOFSAILFLEET_API ASailShip : public APawn
@@ -25,9 +26,16 @@ public:
     virtual void Tick(float DeltaSeconds) override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
-    void ConfigureShip(int32 InTeam, bool bInPlayerFlagship, const FLinearColor& InTrimColor);
+    void ConfigureShip(
+        int32 InTeam,
+        bool bInPlayerFlagship,
+        const FLinearColor& InTrimColor,
+        int32 InFleetIndex = 0);
     void FireBroadside(int32 Side);
     void ReceiveCannonImpact(float Damage, ASailShip* Attacker, const FVector& ImpactPoint);
+    void SetMoveCommand(const FVector& Destination);
+    void SetAttackTarget(ASailShip* Target);
+    void SetSelected(bool bInSelected);
 
     bool IsAfloat() const { return Health > 0.0f; }
     int32 GetTeam() const { return Team; }
@@ -37,6 +45,12 @@ public:
     float GetPortReloadRatio() const;
     float GetStarboardReloadRatio() const;
     bool IsPlayerFlagship() const { return bPlayerFlagship; }
+    bool IsSelected() const { return bSelected; }
+    int32 GetShipRate() const { return ShipRate; }
+    const FString& GetCaptainName() const { return CaptainName; }
+    const FString& GetShipName() const { return ShipName; }
+    const FString& GetShipClassName() const { return ShipClassName; }
+    int32 GetGunCount() const { return GunCount; }
 
 private:
     UPROPERTY(VisibleAnywhere)
@@ -81,10 +95,15 @@ private:
     UPROPERTY()
     TObjectPtr<UStaticMesh> SphereMesh;
 
+    UPROPERTY()
+    TWeakObjectPtr<AShipWakeActor> WakeActor;
+
     int32 Team = 0;
     bool bPlayerFlagship = false;
     bool bVisualsBuilt = false;
     bool bSinking = false;
+    bool bSelected = false;
+    bool bHasMoveCommand = false;
     float MaxHealth = 1200.0f;
     float Health = 1200.0f;
     float SailSetting = 0.65f;
@@ -99,6 +118,14 @@ private:
     float CameraPitch = -15.0f;
     float CameraDistance = 1900.0f;
     FLinearColor TrimColor = FLinearColor(0.08f, 0.22f, 0.55f);
+    FVector MoveDestination = FVector::ZeroVector;
+    TWeakObjectPtr<ASailShip> AttackTarget;
+    int32 ShipRate = 3;
+    int32 GunCount = 74;
+    FString CaptainName = TEXT("Captain");
+    FString ShipName = TEXT("Unnamed Ship");
+    FString ShipClassName = TEXT("Third-rate Ship of the Line");
+    TArray<TObjectPtr<UStaticMeshComponent>> SelectionMarkers;
 
     static constexpr float ReloadDuration = 7.5f;
 
@@ -109,6 +136,7 @@ private:
     void BuildMastsAndRigging();
     void BuildSails();
     void BuildDecorations();
+    void BuildSelectionMarkers();
 
     UStaticMeshComponent* AddBox(
         FName Name,

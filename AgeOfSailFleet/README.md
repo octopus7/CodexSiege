@@ -1,19 +1,36 @@
 # Age of Sail: Fleet Command
 
-A standalone Unreal Engine 5.7 C++ fleet-battle prototype. The sea, ships, sails,
-rigging, gun ports, cannons, lighting, combat, and HUD are generated at runtime,
-so no marketplace assets are required.
+A standalone Unreal Engine 5.7 C++ fleet-battle prototype. Three distinct
+Blender-authored ship rates provide their own hull, gun-deck, cannon, mast,
+sail, rail, and deck-detail silhouettes. ImageGen-authored sails, timber,
+captains, title art, date glyphs, wind instruments, and combat flipbooks are
+imported as project assets; the procedural ship remains only as a safe fallback.
 
 ## Controls
 
-- `W / S`: raise or reduce sails
-- `A / D`: steer
-- `Q` or left mouse: fire port broadside
-- `E` or right mouse: fire starboard broadside
-- `Space`: set full sails
-- Mouse: orbit camera
+- Left click: select one friendly ship
+- Left drag: box-select multiple friendly ships
+- Shift + left click/drag: add ships to the selection
+- Right click sea: move selected ships in formation
+- Right click enemy: attack with selected ships
+- `Ctrl + A`: select the entire blue fleet
+- `W / A / S / D`: move the fleet camera
 - Mouse wheel: zoom
-- Middle mouse: reset camera
 
-Open `AgeOfSailFleet.uproject` and press Play. You command the blue-and-gold
-flagship alongside two allied ships against a four-ship enemy fleet.
+Open `AgeOfSailFleet.uproject`, press Play, then choose **DEPART WITH THE FLEET**
+on the title screen. You command three blue-and-gold ships against a four-ship
+red fleet.
+
+The runtime includes wind-aware sailing, formation commands, autonomous
+broadside combat, ship-rate-specific guns and health, procedural ocean waves,
+foam wakes, sinking, and flipbook cannon/hull/water effects.
+
+## Authored assets
+
+- `Art/Source/AgeOfSailFleetVariants.blend`: editable ship-rate master scene
+- `Art/Preview/FleetClasses.png`: preview-only three-point-lit fleet lineup
+- `Content/Raw/Textures`: ImageGen sail and timber source textures
+- `Content/Raw/UI`: ImageGen captain, title, date, and wind source art
+- `Content/Raw/FX`: ImageGen 4x4 combat flipbook sheets
+
+Blender preview lights and cameras are not exported to Unreal.

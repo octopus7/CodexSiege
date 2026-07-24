@@ -16,6 +16,7 @@ class AGEOFSAILFLEET_API ACannonballActor : public AActor
 
 public:
     ACannonballActor();
+    virtual void Tick(float DeltaSeconds) override;
     void Launch(ASailShip* InSourceShip, const FVector& Velocity, float InDamage);
 
 private:
@@ -32,6 +33,7 @@ private:
     TWeakObjectPtr<ASailShip> SourceShip;
 
     float Damage = 45.0f;
+    bool bImpactPlayed = false;
 
     UFUNCTION()
     void HandleHit(

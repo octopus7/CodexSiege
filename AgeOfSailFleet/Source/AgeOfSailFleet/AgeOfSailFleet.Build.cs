@@ -12,7 +12,19 @@ public class AgeOfSailFleet : ModuleRules
             "CoreUObject",
             "Engine",
             "InputCore",
-            "ProceduralMeshComponent"
+            "ProceduralMeshComponent",
+            "UMG",
+            "Slate",
+            "SlateCore"
         });
+
+        if (Target.bBuildEditor)
+        {
+            PrivateDependencyModuleNames.AddRange(new string[]
+            {
+                "UMGEditor",
+                "UnrealEd"
+            });
+        }
     }
 }

@@ -2,13 +2,14 @@
 
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "FlipbookEffectActor.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "SailShip.h"
 #include "UObject/ConstructorHelpers.h"
 
 ACannonballActor::ACannonballActor()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
     InitialLifeSpan = 8.0f;
 
     Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
@@ -40,6 +41,23 @@ ACannonballActor::ACannonballActor()
     Movement->MaxSpeed = 3200.0f;
     Movement->ProjectileGravityScale = 0.42f;
     Movement->bRotationFollowsVelocity = true;
+}
+
+void ACannonballActor::Tick(const float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+    if (!bImpactPlayed && GetActorLocation().Z <= 5.0f)
+    {
+        bImpactPlayed = true;
+        if (AFlipbookEffectActor* Effect = GetWorld()->SpawnActor<AFlipbookEffectActor>(
+            AFlipbookEffectActor::StaticClass(),
+            FVector(GetActorLocation().X, GetActorLocation().Y, 40.0f),
+            FRotator::ZeroRotator))
+        {
+            Effect->PlayEffect(ESailFlipbookEffect::WaterImpact, 5.2f, 1.15f);
+        }
+        Destroy();
+    }
 }
 
 void ACannonballActor::Launch(
