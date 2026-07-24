@@ -16,6 +16,7 @@ class UStaticMesh;
 class UStaticMeshComponent;
 class UTexture2D;
 class AShipWakeActor;
+class ASinkingFoamActor;
 
 UCLASS()
 class AGEOFSAILFLEET_API ASailShip : public APawn
@@ -113,6 +114,9 @@ private:
 
     UPROPERTY()
     TWeakObjectPtr<AShipWakeActor> WakeActor;
+
+    UPROPERTY()
+    TWeakObjectPtr<ASinkingFoamActor> SinkingFoamActor;
 
     int32 Team = 0;
     bool bPlayerFlagship = false;

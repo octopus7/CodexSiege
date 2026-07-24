@@ -1,5 +1,6 @@
 #include "SailShip.h"
 #include "ShipWakeActor.h"
+#include "SinkingFoamActor.h"
 
 #include "AgeOfSailFleet.h"
 #include "Camera/CameraComponent.h"
@@ -907,6 +908,18 @@ void ASailShip::ReceiveCannonImpact(
         SinkPitchDirection = FMath::RandBool() ? 1.0f : -1.0f;
         SetSelected(false);
         CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        if (ASinkingFoamActor* FoamActor =
+            GetWorld()->SpawnActor<ASinkingFoamActor>(
+                ASinkingFoamActor::StaticClass(),
+                FVector(
+                    GetActorLocation().X,
+                    GetActorLocation().Y,
+                    14.0f),
+                FRotator(0.0f, GetActorRotation().Yaw, 0.0f)))
+        {
+            FoamActor->FollowSinkingShip(this, ShipRate);
+            SinkingFoamActor = FoamActor;
+        }
         for (int32 Burst = 0; Burst < 3; ++Burst)
         {
             const FVector BurstLocation =

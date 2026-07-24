@@ -17,6 +17,8 @@ namespace FleetMoveMarker
     constexpr float EndHeight = 34.0f;
     constexpr float ShaftLength = 265.0f;
     constexpr float HeadLength = 92.0f;
+    constexpr float ShaftThickness = 0.24f;
+    constexpr float HeadThickness = 0.62f;
     constexpr float FadeStart = 0.68f;
 }
 
@@ -159,8 +161,8 @@ void AFleetMoveCommandMarker::UpdateMarker(const float NormalizedAge)
                 ArrowOrigin + Inward * FleetMoveMarker::ShaftLength * 0.5f);
             ArrowShafts[Index]->SetRelativeRotation(ArrowRotation);
             ArrowShafts[Index]->SetRelativeScale3D(FVector(
-                0.095f * VisualScale,
-                0.095f * VisualScale,
+                FleetMoveMarker::ShaftThickness * VisualScale,
+                FleetMoveMarker::ShaftThickness * VisualScale,
                 FleetMoveMarker::ShaftLength / 100.0f * VisualScale));
         }
         if (ArrowHeads.IsValidIndex(Index) && ArrowHeads[Index])
@@ -172,8 +174,8 @@ void AFleetMoveCommandMarker::UpdateMarker(const float NormalizedAge)
                      FleetMoveMarker::HeadLength * 0.5f));
             ArrowHeads[Index]->SetRelativeRotation(ArrowRotation);
             ArrowHeads[Index]->SetRelativeScale3D(FVector(
-                0.27f * VisualScale,
-                0.27f * VisualScale,
+                FleetMoveMarker::HeadThickness * VisualScale,
+                FleetMoveMarker::HeadThickness * VisualScale,
                 FleetMoveMarker::HeadLength / 100.0f * VisualScale));
         }
     }
