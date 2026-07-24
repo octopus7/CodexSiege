@@ -50,6 +50,10 @@ ASailShip::ASailShip()
     VisualRoot->SetupAttachment(CollisionBox);
     VisualRoot->SetRelativeLocation(FVector(0.0f, 0.0f, -70.0f));
 
+    SelectionRingRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SelectionRingRoot"));
+    SelectionRingRoot->SetupAttachment(CollisionBox);
+    SelectionRingRoot->SetRelativeLocation(FVector(0.0f, 0.0f, 18.0f));
+
     HullMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("HullMesh"));
     HullMesh->SetupAttachment(VisualRoot);
     HullMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -169,6 +173,7 @@ void ASailShip::Tick(const float DeltaSeconds)
 
     TickAI(DeltaSeconds);
     TickMovement(DeltaSeconds);
+    UpdateSelectionRing(DeltaSeconds);
 
     const float Bob = FMath::Sin(BattleAge * 0.82f + GetActorLocation().X * 0.0011f) * 14.0f;
     const float Pitch = FMath::Sin(BattleAge * 0.57f + GetActorLocation().Y * 0.0008f) * 1.2f;
@@ -222,7 +227,7 @@ void ASailShip::SetAttackTarget(ASailShip* Target)
 
 void ASailShip::SetSelected(const bool bInSelected)
 {
-    bSelected = bInSelected;
+    bSelected = bInSelected && IsAfloat();
     for (UStaticMeshComponent* Marker : SelectionMarkers)
     {
         if (Marker)
@@ -386,6 +391,7 @@ void ASailShip::Build2DSpriteVisuals()
         ShipRate == 1 ? 5.8f : ShipRate == 2 ? 5.3f : 4.8f));
     ActiveSpriteDirection = INDEX_NONE;
     Update2DSprite();
+    BuildSelectionMarkers();
 
     if (!DirectionalSprites.IsValidIndex(0) || !DirectionalSprites[0])
     {
@@ -659,19 +665,78 @@ void ASailShip::BuildDecorations()
 
 void ASailShip::BuildSelectionMarkers()
 {
-    for (int32 Corner = 0; Corner < 4; ++Corner)
+    if (!SelectionMarkers.IsEmpty() || !CubeMesh || !SelectionRingRoot)
     {
-        const float X = Corner < 2 ? -850.0f : 850.0f;
-        const float Y = Corner % 2 == 0 ? -470.0f : 470.0f;
-        UStaticMeshComponent* Marker = AddBox(
-            *FString::Printf(TEXT("SelectionCorner_%d"), Corner),
-            FVector(X, Y, -250.0f),
-            FVector(260.0f, 28.0f, 12.0f),
-            FRotator(0.0f, Corner < 2 ? -20.0f : 20.0f, 0.0f),
-            TrimMaterial);
-        Marker->SetVisibility(false);
+        return;
+    }
+
+    UMaterialInterface* RingMaterialAsset = LoadObject<UMaterialInterface>(
+        nullptr,
+        TEXT("/Game/Art/Materials/M_ShipWake.M_ShipWake"));
+    if (!RingMaterialAsset)
+    {
+        RingMaterialAsset = LoadObject<UMaterialInterface>(
+            nullptr,
+            TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+    }
+    SelectionMaterial = UMaterialInstanceDynamic::Create(
+        RingMaterialAsset,
+        this);
+    if (SelectionMaterial)
+    {
+        SelectionMaterial->SetVectorParameterValue(
+            TEXT("Color"),
+            FLinearColor(0.12f, 1.4f, 4.0f, 1.0f));
+    }
+
+    constexpr int32 DashCount = 24;
+    const float Radius =
+        ShipRate == 1 ? 1780.0f : (ShipRate == 2 ? 1540.0f : 1320.0f);
+    const float DashLength =
+        ShipRate == 1 ? 255.0f : (ShipRate == 2 ? 225.0f : 200.0f);
+    for (int32 DashIndex = 0; DashIndex < DashCount; ++DashIndex)
+    {
+        const float AngleDegrees =
+            static_cast<float>(DashIndex) * (360.0f / DashCount);
+        const float AngleRadians = FMath::DegreesToRadians(AngleDegrees);
+        UStaticMeshComponent* Marker = NewObject<UStaticMeshComponent>(
+            this,
+            *FString::Printf(TEXT("SelectionRingDash_%02d"), DashIndex));
+        Marker->SetupAttachment(SelectionRingRoot);
+        Marker->SetStaticMesh(CubeMesh);
+        Marker->SetRelativeLocation(FVector(
+            FMath::Cos(AngleRadians) * Radius,
+            FMath::Sin(AngleRadians) * Radius,
+            0.0f));
+        Marker->SetRelativeRotation(FRotator(
+            0.0f,
+            AngleDegrees + 90.0f,
+            0.0f));
+        Marker->SetRelativeScale3D(
+            FVector(DashLength, 48.0f, 10.0f) / 100.0f);
+        Marker->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Marker->SetCastShadow(false);
+        Marker->SetBoundsScale(2.0f);
+        if (SelectionMaterial)
+        {
+            Marker->SetMaterial(0, SelectionMaterial);
+        }
+        Marker->SetVisibility(bSelected && IsAfloat());
+        Marker->RegisterComponent();
+        DetailMeshes.Add(Marker);
         SelectionMarkers.Add(Marker);
     }
+}
+
+void ASailShip::UpdateSelectionRing(const float DeltaSeconds)
+{
+    if (!SelectionRingRoot || !bSelected || !IsAfloat())
+    {
+        return;
+    }
+
+    SelectionRingRoot->AddRelativeRotation(
+        FRotator(0.0f, 34.0f * DeltaSeconds, 0.0f));
 }
 
 UStaticMeshComponent* ASailShip::AddBox(

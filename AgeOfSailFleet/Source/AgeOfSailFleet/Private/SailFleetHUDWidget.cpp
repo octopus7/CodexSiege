@@ -1,11 +1,14 @@
 #include "SailFleetHUDWidget.h"
 
+#include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
+#include "FleetPlayerController.h"
+#include "Rendering/DrawElements.h"
 
 namespace SailFleetHUD
 {
@@ -75,6 +78,79 @@ void USailFleetHUDWidget::NativePreConstruct()
         BindExistingCardWidgets();
     }
     RefreshPresentation();
+}
+
+int32 USailFleetHUDWidget::NativePaint(
+    const FPaintArgs& Args,
+    const FGeometry& AllottedGeometry,
+    const FSlateRect& MyCullingRect,
+    FSlateWindowElementList& OutDrawElements,
+    const int32 LayerId,
+    const FWidgetStyle& InWidgetStyle,
+    const bool bParentEnabled) const
+{
+    const int32 BaseLayer = Super::NativePaint(
+        Args,
+        AllottedGeometry,
+        MyCullingRect,
+        OutDrawElements,
+        LayerId,
+        InWidgetStyle,
+        bParentEnabled);
+
+    const AFleetPlayerController* FleetController =
+        GetOwningPlayer<AFleetPlayerController>();
+    if (!FleetController || !FleetController->IsDragSelecting())
+    {
+        return BaseLayer;
+    }
+
+    const float ViewportScale = FMath::Max(
+        UWidgetLayoutLibrary::GetViewportScale(this),
+        KINDA_SMALL_NUMBER);
+    const FVector2D Start = FleetController->GetDragStart() / ViewportScale;
+    const FVector2D Current = FleetController->GetDragCurrent() / ViewportScale;
+    const FVector2D Minimum(
+        FMath::Min(Start.X, Current.X),
+        FMath::Min(Start.Y, Current.Y));
+    const FVector2D Maximum(
+        FMath::Max(Start.X, Current.X),
+        FMath::Max(Start.Y, Current.Y));
+
+    if ((Maximum - Minimum).SizeSquared() < 4.0f)
+    {
+        return BaseLayer;
+    }
+
+    TArray<FVector2D> OutlinePoints;
+    OutlinePoints.Reserve(5);
+    OutlinePoints.Add(Minimum);
+    OutlinePoints.Add(FVector2D(Maximum.X, Minimum.Y));
+    OutlinePoints.Add(Maximum);
+    OutlinePoints.Add(FVector2D(Minimum.X, Maximum.Y));
+    OutlinePoints.Add(Minimum);
+
+    const FPaintGeometry PaintGeometry = AllottedGeometry.ToPaintGeometry();
+    FSlateDrawElement::MakeLines(
+        OutDrawElements,
+        BaseLayer + 1,
+        PaintGeometry,
+        OutlinePoints,
+        ESlateDrawEffect::None,
+        FLinearColor(0.01f, 0.16f, 0.32f, 0.82f),
+        true,
+        7.0f);
+    FSlateDrawElement::MakeLines(
+        OutDrawElements,
+        BaseLayer + 2,
+        PaintGeometry,
+        OutlinePoints,
+        ESlateDrawEffect::None,
+        FLinearColor(0.62f, 0.94f, 1.0f, 1.0f),
+        true,
+        2.2f);
+
+    return BaseLayer + 2;
 }
 
 void USailFleetHUDWidget::SetSelectedShips(const TArray<FSailShipHUDEntry>& InShips)

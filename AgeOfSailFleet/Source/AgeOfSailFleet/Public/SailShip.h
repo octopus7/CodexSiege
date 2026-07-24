@@ -64,6 +64,9 @@ private:
     TObjectPtr<USceneComponent> VisualRoot;
 
     UPROPERTY(VisibleAnywhere)
+    TObjectPtr<USceneComponent> SelectionRingRoot;
+
+    UPROPERTY(VisibleAnywhere)
     TObjectPtr<UProceduralMeshComponent> HullMesh;
 
     UPROPERTY(VisibleAnywhere)
@@ -92,6 +95,9 @@ private:
 
     UPROPERTY()
     TObjectPtr<UMaterialInstanceDynamic> TrimMaterial;
+
+    UPROPERTY()
+    TObjectPtr<UMaterialInstanceDynamic> SelectionMaterial;
 
     UPROPERTY()
     TObjectPtr<UStaticMesh> CubeMesh;
@@ -155,6 +161,7 @@ private:
     void BuildSails();
     void BuildDecorations();
     void BuildSelectionMarkers();
+    void UpdateSelectionRing(float DeltaSeconds);
 
     UStaticMeshComponent* AddBox(
         FName Name,
