@@ -6,9 +6,10 @@
 
 namespace SailOcean
 {
-    // 90,000uu across, leaving a broad visual margin around the 60,000uu
-    // playable ship area even at the fleet-level camera zoom.
-    constexpr int32 Resolution = 61;
+    // 270,000uu across (nine times the former surface area). Keeping the
+    // 1,500uu cell spacing preserves the authored wave sampling density while
+    // the 181x181 grid remains modest enough for one per-frame mesh update.
+    constexpr int32 Resolution = 181;
     constexpr float CellSize = 1500.0f;
 }
 
