@@ -2,6 +2,8 @@
 
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
+#include "UObject/ConstructorHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -175,6 +177,19 @@ ASiegeAssetProxyActor::ASiegeAssetProxyActor()
     ReplacementMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ReplacementMesh"));
     ReplacementMesh->SetupAttachment(Root);
     ReplacementMesh->SetCollisionProfileName(TEXT("BlockAll"));
+
+    FactionMarker = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FactionMarker"));
+    FactionMarker->SetupAttachment(Root);
+    FactionMarker->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    FactionMarker->SetCastShadow(false);
+    FactionMarker->SetVisibility(false);
+
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> MarkerMesh(
+        TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+    if (MarkerMesh.Succeeded())
+    {
+        FactionMarker->SetStaticMesh(MarkerMesh.Object);
+    }
 }
 
 void ASiegeAssetProxyActor::OnConstruction(const FTransform& Transform)
@@ -187,6 +202,7 @@ void ASiegeAssetProxyActor::BeginPlay()
 {
     Super::BeginPlay();
     RefreshVisual();
+    RefreshFactionMarker();
 }
 
 void ASiegeAssetProxyActor::ConfigureAsset(const ESiegeAssetSlot NewSlot)
@@ -234,6 +250,175 @@ void ASiegeAssetProxyActor::RefreshVisual()
             BoundsExtent.Y,
             BoundsExtent.Z);
     }
+
+    RefreshFactionMarker();
+}
+
+void ASiegeAssetProxyActor::InitializeCombatant(
+    const ESiegeFaction NewFaction,
+    const float NewMaxHealth,
+    const float NewMoveSpeed,
+    const float NewAttackDamage,
+    const float NewAttackRange)
+{
+    Faction = NewFaction;
+    MaxHealth = FMath::Max(1.0f, NewMaxHealth);
+    CurrentHealth = MaxHealth;
+    MoveSpeed = FMath::Max(0.0f, NewMoveSpeed);
+    AttackDamage = FMath::Max(0.0f, NewAttackDamage);
+    AttackRange = FMath::Max(0.0f, NewAttackRange);
+    AttackCooldownRemaining = 0.0f;
+    CombatVelocity = FVector::ZeroVector;
+    CombatHomeLocation = GetActorLocation();
+    bCombatEnabled = true;
+    bDefeated = false;
+    SetActorHiddenInGame(false);
+    SetActorEnableCollision(true);
+    RefreshVisual();
+    RefreshFactionMarker();
+}
+
+bool ASiegeAssetProxyActor::ApplyCombatDamage(const float Damage, AActor* DamageSource)
+{
+    if (!IsCombatAlive() || Damage <= 0.0f)
+    {
+        return false;
+    }
+
+    CurrentHealth = FMath::Max(0.0f, CurrentHealth - Damage);
+    TriggerActionPulse();
+
+    if (AssetSlot == ESiegeAssetSlot::Gate && (Damage >= 100.0f || CurrentHealth <= 0.0f))
+    {
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("IronwallSiegeCombat gate_health=%.0f/%.0f damage=%.0f source=%s"),
+            CurrentHealth,
+            MaxHealth,
+            Damage,
+            DamageSource ? *DamageSource->GetName() : TEXT("Unknown"));
+    }
+
+    if (CurrentHealth <= 0.0f)
+    {
+        HandleDefeat(DamageSource);
+        return true;
+    }
+    return false;
+}
+
+float ASiegeAssetProxyActor::GetHealthRatio() const
+{
+    return MaxHealth > 0.0f ? CurrentHealth / MaxHealth : 0.0f;
+}
+
+void ASiegeAssetProxyActor::AdvanceCombatTime(const float DeltaSeconds)
+{
+    AttackCooldownRemaining = FMath::Max(0.0f, AttackCooldownRemaining - DeltaSeconds);
+    ActionPulse = FMath::Max(0.0f, ActionPulse - DeltaSeconds * 2.6f);
+
+    if (FactionMarker && FactionMarker->IsVisible())
+    {
+        const float PulseScale = 1.0f + ActionPulse * 0.65f;
+        FactionMarker->SetRelativeScale3D(MarkerBaseScale * PulseScale);
+    }
+}
+
+void ASiegeAssetProxyActor::StartAttackCooldown(const float Duration)
+{
+    AttackCooldownRemaining = FMath::Max(0.0f, Duration);
+}
+
+void ASiegeAssetProxyActor::TriggerActionPulse()
+{
+    ActionPulse = 1.0f;
+}
+
+void ASiegeAssetProxyActor::RefreshFactionMarker()
+{
+    if (!FactionMarker)
+    {
+        return;
+    }
+
+    const bool bShowMarker = bCombatEnabled && !bDefeated && Faction != ESiegeFaction::Neutral;
+    FactionMarker->SetVisibility(bShowMarker);
+    if (!bShowMarker)
+    {
+        return;
+    }
+
+    float MarkerHeight = 280.0f;
+    MarkerBaseScale = FVector(0.10f);
+    if (AssetSlot == ESiegeAssetSlot::BatteringRam)
+    {
+        MarkerHeight = 520.0f;
+        MarkerBaseScale = FVector(0.16f);
+    }
+    else if (AssetSlot == ESiegeAssetSlot::Trebuchet)
+    {
+        MarkerHeight = 920.0f;
+        MarkerBaseScale = FVector(0.18f);
+    }
+    else if (AssetSlot == ESiegeAssetSlot::Gate)
+    {
+        MarkerHeight = 840.0f;
+        MarkerBaseScale = FVector(0.20f);
+    }
+
+    FactionMarker->SetRelativeLocation(FVector(0.0f, 0.0f, MarkerHeight));
+    FactionMarker->SetRelativeScale3D(MarkerBaseScale);
+
+    UMaterialInterface* BaseMaterial = LoadObject<UMaterialInterface>(
+        nullptr,
+        TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+    if (BaseMaterial && !FactionMarkerMaterial)
+    {
+        FactionMarkerMaterial = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+        FactionMarker->SetMaterial(0, FactionMarkerMaterial);
+    }
+
+    if (FactionMarkerMaterial)
+    {
+        const FLinearColor FactionColor =
+            Faction == ESiegeFaction::Attackers
+                ? FLinearColor(0.80f, 0.035f, 0.015f)
+                : FLinearColor(0.025f, 0.16f, 0.85f);
+        FactionMarkerMaterial->SetVectorParameterValue(TEXT("Color"), FactionColor);
+    }
+}
+
+void ASiegeAssetProxyActor::HandleDefeat(AActor* DamageSource)
+{
+    bDefeated = true;
+    CombatVelocity = FVector::ZeroVector;
+    SetActorEnableCollision(false);
+    RefreshFactionMarker();
+
+    if (AssetSlot == ESiegeAssetSlot::Gate)
+    {
+        FVector BreachedLocation = GetActorLocation();
+        BreachedLocation.Z -= 760.0f;
+        SetActorLocation(BreachedLocation);
+        UE_LOG(
+            LogTemp,
+            Display,
+            TEXT("IronwallSiegeBattle gate_breached source=%s"),
+            DamageSource ? *DamageSource->GetName() : TEXT("Unknown"));
+    }
+    else
+    {
+        SetActorHiddenInGame(true);
+    }
+
+    UE_LOG(
+        LogTemp,
+        Display,
+        TEXT("IronwallSiegeCombat defeated=%s faction=%s slot=%s"),
+        *GetName(),
+        *StaticEnum<ESiegeFaction>()->GetNameStringByValue(static_cast<int64>(Faction)),
+        *StaticEnum<ESiegeAssetSlot>()->GetNameStringByValue(static_cast<int64>(AssetSlot)));
 }
 
 void ASiegeAssetProxyActor::BuildProceduralMesh()
@@ -256,6 +441,18 @@ void ASiegeAssetProxyActor::BuildProceduralMesh()
                 Wood = Set->WoodColor;
                 Army = Set->ArmyColor;
             }
+        }
+    }
+
+    if (AssetSlot == ESiegeAssetSlot::Infantry)
+    {
+        if (Faction == ESiegeFaction::Attackers)
+        {
+            Army = FLinearColor(0.48f, 0.055f, 0.025f);
+        }
+        else if (Faction == ESiegeFaction::Defenders)
+        {
+            Army = FLinearColor(0.035f, 0.12f, 0.52f);
         }
     }
 

@@ -11,10 +11,12 @@
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/Texture2D.h"
+#include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "SiegeGameInstance.h"
 #include "SiegeTextureLoader.h"
+#include "SiegeWorldDirector.h"
 
 namespace
 {
@@ -210,6 +212,11 @@ void USiegeTitleWidget::SetGameplayInput(const bool bGameplay)
 
 void USiegeTitleWidget::HandleStartClicked()
 {
+    for (TActorIterator<ASiegeWorldDirector> It(GetWorld()); It; ++It)
+    {
+        It->StartBattle();
+        break;
+    }
     SetVisibility(ESlateVisibility::Collapsed);
     SetGameplayInput(true);
 }

@@ -21,3 +21,11 @@ enum class ESiegeResourceFlavor : uint8
     Prototype,
     BlenderProduction
 };
+
+UENUM(BlueprintType)
+enum class ESiegeFaction : uint8
+{
+    Neutral,
+    Attackers,
+    Defenders
+};

@@ -1,22 +1,36 @@
 #include "SiegePlayerController.h"
 
 #include "Blueprint/UserWidget.h"
+#include "EngineUtils.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "SiegeTitleWidget.h"
+#include "SiegeWorldDirector.h"
 
 void ASiegePlayerController::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (IsLocalController() && !FParse::Param(FCommandLine::Get(), TEXT("SkipTitle")))
+    if (!IsLocalController())
     {
-        TitleWidget = CreateWidget<USiegeTitleWidget>(this, USiegeTitleWidget::StaticClass());
-        if (TitleWidget)
+        return;
+    }
+
+    if (FParse::Param(FCommandLine::Get(), TEXT("SkipTitle")))
+    {
+        for (TActorIterator<ASiegeWorldDirector> It(GetWorld()); It; ++It)
         {
-            TitleWidget->AddToViewport(100);
-            TitleWidget->ShowTitle();
+            It->StartBattle();
+            break;
         }
+        return;
+    }
+
+    TitleWidget = CreateWidget<USiegeTitleWidget>(this, USiegeTitleWidget::StaticClass());
+    if (TitleWidget)
+    {
+        TitleWidget->AddToViewport(100);
+        TitleWidget->ShowTitle();
     }
 }
 
