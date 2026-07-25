@@ -484,9 +484,9 @@ def main():
     ensure_runtime_ui_font()
 
     ship_variants = [
-        ("AgeOfSailWarship_FirstRate.fbx", "SM_Warship_FirstRate"),
-        ("AgeOfSailWarship_SecondRate.fbx", "SM_Warship_SecondRate"),
-        ("AgeOfSailWarship_Frigate.fbx", "SM_Warship_Frigate"),
+        ("AgeOfSailWarship_FirstRate_GalleonRefined.fbx", "SM_Warship_FirstRate"),
+        ("AgeOfSailWarship_SecondRate_GalleonRefined.fbx", "SM_Warship_SecondRate"),
+        ("AgeOfSailWarship_Frigate_GalleonRefined.fbx", "SM_Warship_Frigate"),
     ]
     imported_variant = False
     for source_name, asset_name in ship_variants:

@@ -34,6 +34,11 @@ foam wakes, sinking, and flipbook cannon/hull/water effects.
 ## Authored assets
 
 - `Art/Source/AgeOfSailFleetVariants.blend`: editable ship-rate master scene
+- `Art/Source/AgeOfSailFleetVariants_GalleonRefined.blend`: production-detail
+  pass with curved hull wales, beakheads, figureheads, layered stern galleries,
+  lifeboats, anchors, lanterns, and dense ratline rigging
+- `Art/Reference/Galleon_Design_Concept.png`: ImageGen design reference used for
+  the refined galleon silhouette and detail language
 - `Art/Preview/FleetClasses.png`: preview-only three-point-lit fleet lineup
 - `Content/Raw/Textures`: ImageGen sail and timber source textures
 - `Content/Raw/UI`: ImageGen captain, title, date, and wind source art
